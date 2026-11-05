@@ -1,0 +1,38 @@
+export type IconName =
+  | "home"
+  | "calendar"
+  | "book"
+  | "chart"
+  | "user"
+  | "arrow"
+  | "chevron"
+  | "bell"
+  | "clock"
+  | "target"
+  | "check"
+  | "fire"
+  | "spark"
+  | "code"
+  | "server"
+  | "database"
+  | "shield"
+  | "briefcase"
+  | "pin"
+  | "close"
+  | "help"
+  | "settings"
+  | "logout"
+  | "coffee"
+  | "trend"
+  | "mail";
+
+/** Paleta de cores usada nos badges, ícones de matéria e logos (classes CSS). */
+export type ColorTone =
+  | "purple"
+  | "blue"
+  | "orange"
+  | "green"
+  | "yellow"
+  | "mint"
+  | "lavender"
+  | "neutral";
