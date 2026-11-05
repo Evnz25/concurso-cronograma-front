@@ -1,0 +1,10 @@
+{
+  "description": "Ajuda estudantes de concursos públicos de TI a organizar estudos com cronogramas adaptativos, questões com repetição espaçada e acompanhamento de desempenho.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
