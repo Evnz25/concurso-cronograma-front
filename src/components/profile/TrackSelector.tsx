@@ -8,11 +8,14 @@ interface TrackSelectorProps {
 }
 
 /** Seleção de trilha de estudo (RF05). */
-export function TrackSelector({ tracks, selectedId, onSelect }: TrackSelectorProps) {
+export function TrackSelector({
+  tracks,
+  selectedId,
+  onSelect,
+}: TrackSelectorProps) {
   return (
     <div className="track-selection">
-      <h2>Qual é o seu foco?</h2>
-      <p>Escolha a trilha que mais combina com seus objetivos.</p>
+      <h2>Qual é sua trilha?</h2>
       <div className="track-options">
         {tracks.map((track) => {
           const selected = track.id === selectedId;

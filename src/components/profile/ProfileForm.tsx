@@ -13,7 +13,12 @@ interface ProfileFormProps {
 }
 
 /** Criação e edição de perfil (RF01, RF02). */
-export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileFormProps) {
+export function ProfileForm({
+  user,
+  tracks,
+  onSelectTrack,
+  onSave,
+}: ProfileFormProps) {
   const [form, setForm] = useState<ProfileFormData>({
     name: user.name,
     email: user.email,
@@ -31,13 +36,6 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
 
   return (
     <form className="panel profile-form" onSubmit={handleSubmit}>
-      <div className="section-heading">
-        <div>
-          <h2>Vamos nos conhecer</h2>
-          <p>Seus dados, sempre do seu jeito.</p>
-        </div>
-        <span className="badge purple">Seu perfil</span>
-      </div>
       <div className="profile-avatar-row">
         <Avatar name={user.name} size="large" />
         <div>
@@ -77,17 +75,14 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
             placeholder="Digite uma nova senha"
             autoComplete="new-password"
           />
-          <small>
-            Use pelo menos {MIN_PASSWORD_LENGTH} caracteres. Ambiente demonstrativo, sem
-            autenticação real.
-          </small>
         </label>
       </div>
-      <TrackSelector tracks={tracks} selectedId={user.trackId} onSelect={onSelectTrack} />
+      <TrackSelector
+        tracks={tracks}
+        selectedId={user.trackId}
+        onSelect={onSelectTrack}
+      />
       <div className="form-footer">
-        <span>
-          <Icon name="shield" size={15} /> Sua jornada, personalizada.
-        </span>
         <button className="primary-button" type="submit">
           {user.name ? "Salvar alterações" : "Criar perfil"}
           <Icon name="check" size={17} />

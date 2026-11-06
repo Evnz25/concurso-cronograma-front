@@ -34,7 +34,7 @@ export function QuestionsView({
   return (
     <>
       <PageHeading
-        eyebrow="PRÁTICA QUE FIXA"
+        eyebrow="PRÁTICA"
         title="Uma questão. Mais conhecimento"
         aside={<SmartPill>Revisão espaçada</SmartPill>}
       />
