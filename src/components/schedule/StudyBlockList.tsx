@@ -31,8 +31,10 @@ export function StudyBlockList({
                 <span>
                   {pause.startTime} – {pause.endTime}
                 </span>{" "}
-                Pausa para recarregar{" "}
-                <span className="break-duration">{formatDuration(pause.durationMinutes)}</span>
+                Pausa
+                <span className="break-duration">
+                  {formatDuration(pause.durationMinutes)}
+                </span>
               </div>
             )}
             <div className={`study-block ${done ? "is-done" : ""}`}>
@@ -53,7 +55,8 @@ export function StudyBlockList({
                 <p>
                   {compact ? (
                     <>
-                      <Icon name="clock" size={12} /> {block.startTime} <span>·</span> {duration}
+                      <Icon name="clock" size={12} /> {block.startTime}{" "}
+                      <span>·</span> {duration}
                     </>
                   ) : (
                     block.topic
@@ -64,11 +67,17 @@ export function StudyBlockList({
                 <span
                   className={`badge ${done ? "green" : block.isSrsReview ? "purple" : "neutral"}`}
                 >
-                  {done ? "Concluído" : block.isSrsReview ? "Revisão SRS" : "A fazer"}
+                  {done
+                    ? "Concluído"
+                    : block.isSrsReview
+                      ? "Revisão SRS"
+                      : "A fazer"}
                 </span>
               ) : (
                 <div className="block-meta">
-                  <span className={`badge ${block.color}`}>{done ? "Concluído" : block.tag}</span>
+                  <span className={`badge ${block.color}`}>
+                    {done ? "Concluído" : block.tag}
+                  </span>
                   <span>
                     {block.startTime} · {duration}
                   </span>

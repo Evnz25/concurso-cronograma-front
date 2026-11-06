@@ -37,7 +37,10 @@ export function QuestionCard({
       "answer",
       selectedOption === index && "selected",
       revealed && index === question.correctIndex && "correct",
-      revealed && selectedOption === index && index !== question.correctIndex && "incorrect",
+      revealed &&
+        selectedOption === index &&
+        index !== question.correctIndex &&
+        "incorrect",
     ]
       .filter(Boolean)
       .join(" ");
@@ -70,17 +73,19 @@ export function QuestionCard({
           >
             <span className="answer-letter">{getOptionLetter(index)}</span>
             <span>{option}</span>
-            {revealed && index === question.correctIndex && <Icon name="check" size={20} />}
+            {revealed && index === question.correctIndex && (
+              <Icon name="check" size={20} />
+            )}
           </button>
         ))}
       </div>
       {!revealed ? (
         <div className="question-bottom">
-          <span>
-            <Icon name="shield" size={15} />
-            Aqui, errar também é aprender.
-          </span>
-          <button className="primary-button" disabled={selectedOption === null} onClick={onConfirm}>
+          <button
+            className="primary-button"
+            disabled={selectedOption === null}
+            onClick={onConfirm}
+          >
             Confirmar resposta <Icon name="arrow" size={17} />
           </button>
         </div>
@@ -89,12 +94,18 @@ export function QuestionCard({
           <div className={`explanation ${correct ? "success" : ""}`}>
             <strong>
               <Icon name={correct ? "check" : "book"} size={19} />
-              {correct ? "Muito bem! Você acertou." : "Mais uma oportunidade de aprender."}
+              {correct
+                ? "Muito bem! Você acertou."
+                : "Mais uma oportunidade de aprender."}
             </strong>
             <p>{question.explanation}</p>
           </div>
           <DifficultyRating rating={rating} onRate={onRate} />
-          <button className="primary-button next-question" disabled={!rating} onClick={onNext}>
+          <button
+            className="primary-button next-question"
+            disabled={!rating}
+            onClick={onNext}
+          >
             {isLast ? "Concluir sessão" : "Próxima questão"}
             <Icon name="arrow" size={17} />
           </button>

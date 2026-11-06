@@ -33,7 +33,6 @@ export function StatsView({ answers, completedMinutes }: StatsViewProps) {
       <PageHeading
         eyebrow="CADA EVOLUÇÃO MERECE SER VISTA"
         title="Seu esforço tem resultado"
-        description="Veja o quanto você avançou e onde dar o próximo passo."
         aside={
           <select
             className="period-select"

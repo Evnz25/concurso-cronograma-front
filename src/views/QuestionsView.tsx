@@ -1,8 +1,12 @@
-import type { AnswerRecord, Difficulty, Question, QuestionSession } from "@/interfaces";
+import type {
+  AnswerRecord,
+  Difficulty,
+  Question,
+  QuestionSession,
+} from "@/interfaces";
 import { PageHeading } from "@/components/common/PageHeading";
 import { SmartPill } from "@/components/common/SmartPill";
 import { QuestionCard } from "@/components/questions/QuestionCard";
-import { SessionSummaryCard } from "@/components/questions/SessionSummaryCard";
 import { isLastQuestion } from "@/services/questionService";
 
 interface QuestionsViewProps {
@@ -32,7 +36,6 @@ export function QuestionsView({
       <PageHeading
         eyebrow="PRÁTICA QUE FIXA"
         title="Uma questão. Mais conhecimento"
-        description="Pratique, entenda seus erros e fortaleça sua memória."
         aside={<SmartPill>Revisão espaçada</SmartPill>}
       />
       <div className="question-layout">
@@ -49,12 +52,7 @@ export function QuestionsView({
           onRate={onRate}
           onNext={onNext}
         />
-        <aside>
-          <SessionSummaryCard
-            answered={answers.length}
-            correct={answers.filter((answer) => answer.correct).length}
-          />
-        </aside>
+        <aside></aside>
       </div>
     </>
   );
