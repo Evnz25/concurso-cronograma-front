@@ -9,7 +9,11 @@ interface MetricsRowProps {
   accuracyPercent: number;
 }
 
-export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: MetricsRowProps) {
+export function MetricsRow({
+  studyHours,
+  questionsSolved,
+  accuracyPercent,
+}: MetricsRowProps) {
   return (
     <div className="metrics-row">
       <div className="metric-card">
@@ -26,7 +30,6 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
             <Icon name="trend" size={12} /> 18%
           </small>
         </div>
-        <p>nesta semana</p>
         <div className="metric-sparkline purple-bars">
           {SPARKLINE.map((height, i) => (
             <i key={i} style={{ height: `${height}%` }} />
@@ -46,7 +49,6 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
             <Icon name="trend" size={12} /> 24%
           </small>
         </div>
-        <p>continue nesse ritmo</p>
         <div className="tiny-chart">
           <svg viewBox="0 0 150 38" preserveAspectRatio="none">
             <path
@@ -69,10 +71,6 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
           {accuracyPercent}
           <span>%</span>
           <small className="positive">+5%</small>
-        </div>
-        <p>acima da semana passada</p>
-        <div className="metric-progress">
-          <span />
         </div>
       </div>
     </div>
