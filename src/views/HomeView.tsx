@@ -11,9 +11,7 @@ import { PageHeading } from "@/components/common/PageHeading";
 import { DailyGoalCard } from "@/components/home/DailyGoalCard";
 import { MetricsRow } from "@/components/home/MetricsRow";
 import { OpportunitiesSection } from "@/components/home/OpportunitiesSection";
-import { QuoteCard } from "@/components/home/QuoteCard";
 import { TrackCard } from "@/components/home/TrackCard";
-import { StudyBlockList } from "@/components/schedule/StudyBlockList";
 import {
   filterExams,
   getExams,
@@ -28,12 +26,10 @@ import { getGoalPercent } from "@/services/scheduleService";
 import {
   STATS_BASELINE,
   getAccuracy,
-  getPendingReviewCount,
   getQuestionsSolved,
   getStudyHours,
 } from "@/services/statsService";
 import { getTrackById } from "@/services/trackService";
-import { getFirstName } from "@/services/userService";
 
 interface HomeViewProps {
   user: User;
@@ -109,7 +105,6 @@ export function HomeView({
             onEdit={() => onNavigate("profile")}
             onExplore={() => onNavigate("stats")}
           />
-          <QuoteCard />
         </aside>
       </div>
     </>

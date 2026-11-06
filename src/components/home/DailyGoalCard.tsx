@@ -25,7 +25,10 @@ export function DailyGoalCard({
         <h2>Meta diária</h2>
         <Icon name="target" size={19} />
       </div>
-      <div className="goal-ring" style={{ "--progress": `${goalPercent}%` } as CSSProperties}>
+      <div
+        className="goal-ring"
+        style={{ "--progress": `${goalPercent}%` } as CSSProperties}
+      >
         <div>
           <strong>
             {hours}
@@ -35,12 +38,6 @@ export function DailyGoalCard({
           </strong>
           <p>de {formatDuration(plannedMinutes)} planejadas</p>
         </div>
-      </div>
-      <div className="goal-caption">
-        <span className="little-dot" />
-        {completedBlocks === totalBlocks
-          ? "Meta alcançada. Excelente trabalho!"
-          : "Cada minuto conta. Continue!"}
       </div>
       <div className="goal-stats">
         <span>

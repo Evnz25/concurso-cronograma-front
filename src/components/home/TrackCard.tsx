@@ -8,7 +8,12 @@ interface TrackCardProps {
   onExplore: () => void;
 }
 
-export function TrackCard({ track, progressPercent, onEdit, onExplore }: TrackCardProps) {
+export function TrackCard({
+  track,
+  progressPercent,
+  onEdit,
+  onExplore,
+}: TrackCardProps) {
   return (
     <section className="panel focus-card">
       <div className="section-heading">
@@ -21,16 +26,6 @@ export function TrackCard({ track, progressPercent, onEdit, onExplore }: TrackCa
         <Icon name={track.icon} size={24} />
       </span>
       <h3>{track.name}</h3>
-      <div className="track-progress">
-        <span />
-      </div>
-      <div className="track-caption">
-        <span>Seu progresso na trilha</span>
-        <strong>{progressPercent}%</strong>
-      </div>
-      <button className="text-button" onClick={onExplore}>
-        Explorar meu desempenho <Icon name="arrow" size={15} />
-      </button>
     </section>
   );
 }

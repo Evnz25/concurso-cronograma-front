@@ -24,7 +24,6 @@ export function OpportunitiesSection({
           <h2>
             Oportunidades para o seu futuro <span className="little-dot" />
           </h2>
-          <p>Concursos abertos que combinam com você.</p>
         </div>
         <select
           aria-label="Filtrar concursos"
@@ -45,13 +44,15 @@ export function OpportunitiesSection({
             <Icon name="briefcase" size={28} />
             <h3>Novas oportunidades em breve</h3>
             <p>Nenhum edital desta trilha na nossa seleção demonstrativa.</p>
-            <button className="text-button" onClick={() => onFilterChange("all")}>
+            <button
+              className="text-button"
+              onClick={() => onFilterChange("all")}
+            >
               Ver todos os editais <Icon name="arrow" size={16} />
             </button>
           </div>
         )}
       </div>
-      <span className="demo-note">Seleção ilustrativa de editais para explorar o app.</span>
     </section>
   );
 }

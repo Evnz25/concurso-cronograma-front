@@ -12,7 +12,6 @@ import type {
 } from "@/interfaces";
 import { Toast } from "@/components/common/Toast";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { PageFooter } from "@/components/layout/PageFooter";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
@@ -84,16 +83,23 @@ export default function App() {
 
   const confirmAnswer = () => {
     const question = questions[session.index];
-    setAnswers((prev) => [...prev, createAnswerRecord(question, session.selectedOption)]);
+    setAnswers((prev) => [
+      ...prev,
+      createAnswerRecord(question, session.selectedOption),
+    ]);
     setSession((prev) => ({ ...prev, revealed: true }));
   };
 
   const rateQuestion = (difficulty: Difficulty) => {
     setSession((prev) => ({ ...prev, rating: difficulty }));
     setAnswers((prev) =>
-      prev.map((answer, i) => (i === prev.length - 1 ? { ...answer, difficulty } : answer)),
+      prev.map((answer, i) =>
+        i === prev.length - 1 ? { ...answer, difficulty } : answer,
+      ),
     );
-    toast.notify(`Revisão agendada: ${getDifficultyOption(difficulty).reviewLabel.toLowerCase()}.`);
+    toast.notify(
+      `Revisão agendada: ${getDifficultyOption(difficulty).reviewLabel.toLowerCase()}.`,
+    );
   };
 
   const goToNextQuestion = () => {
@@ -106,7 +112,8 @@ export default function App() {
   };
 
   // --- Perfil e conta -----------------------------------------------------
-  const selectTrack = (trackId: TrackId) => setUser((prev) => ({ ...prev, trackId }));
+  const selectTrack = (trackId: TrackId) =>
+    setUser((prev) => ({ ...prev, trackId }));
 
   const saveProfile = (data: ProfileFormData) => {
     setUser((prev) => ({ ...prev, name: data.name, email: data.email }));
@@ -192,7 +199,9 @@ export default function App() {
               onNext={goToNextQuestion}
             />
           )}
-          {page === "stats" && <StatsView answers={answers} completedMinutes={completedMinutes} />}
+          {page === "stats" && (
+            <StatsView answers={answers} completedMinutes={completedMinutes} />
+          )}
           {page === "profile" && (
             <ProfileView
               key={accountVersion}
@@ -202,7 +211,6 @@ export default function App() {
               onOpenModal={setModal}
             />
           )}
-          <PageFooter />
         </main>
       </div>
 
@@ -210,7 +218,11 @@ export default function App() {
       <Toast message={toast.message} onClose={toast.dismiss} />
 
       {selectedExam && (
-        <ExamDetailsModal exam={selectedExam} onClose={closeDialogs} onPrepare={prepareForExam} />
+        <ExamDetailsModal
+          exam={selectedExam}
+          onClose={closeDialogs}
+          onPrepare={prepareForExam}
+        />
       )}
       {!selectedExam && modal === "notifications" && (
         <NotificationsModal
@@ -223,7 +235,9 @@ export default function App() {
           }}
         />
       )}
-      {!selectedExam && modal === "help" && <HelpModal onClose={closeDialogs} />}
+      {!selectedExam && modal === "help" && (
+        <HelpModal onClose={closeDialogs} />
+      )}
       {!selectedExam && (modal === "reset" || modal === "delete") && (
         <ConfirmActionModal
           variant={modal}
