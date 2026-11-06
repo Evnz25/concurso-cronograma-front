@@ -1,5 +1,10 @@
+import { StyleSheet, View } from "react-native";
 import type { Exam, ExamFilter } from "@/interfaces";
+import { colors, fonts, radius, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Button } from "../common/Button";
 import { Icon } from "../common/Icon";
+import { SegmentedControl } from "../common/SegmentedControl";
 import { ExamCard } from "./ExamCard";
 
 interface OpportunitiesSectionProps {
@@ -10,6 +15,12 @@ interface OpportunitiesSectionProps {
   onSelectExam: (examId: string) => void;
 }
 
+const FILTER_OPTIONS = [
+  { value: "all" as const, label: "Todos" },
+  { value: "mine" as const, label: "Minha trilha" },
+  { value: "salary" as const, label: "Salário" },
+];
+
 export function OpportunitiesSection({
   exams,
   filter,
@@ -18,41 +29,82 @@ export function OpportunitiesSection({
   onSelectExam,
 }: OpportunitiesSectionProps) {
   return (
-    <section className="opportunities-section">
-      <div className="section-heading">
-        <div>
-          <h2>
-            Oportunidades para o seu futuro <span className="little-dot" />
-          </h2>
-        </div>
-        <select
-          aria-label="Filtrar concursos"
-          value={filter}
-          onChange={(e) => onFilterChange(e.target.value as ExamFilter)}
-        >
-          <option value="all">Todos os editais</option>
-          <option value="mine">Minha trilha</option>
-          <option value="salary">Maior salário</option>
-        </select>
-      </div>
-      <div className="exam-list">
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <AppText variant="heading">Oportunidades</AppText>
+      </View>
+
+      <SegmentedControl
+        options={FILTER_OPTIONS}
+        value={filter}
+        onChange={onFilterChange}
+        accessibilityLabel="Filtrar concursos"
+      />
+
+      <View style={styles.list}>
         {exams.map((exam) => (
           <ExamCard key={exam.id} exam={exam} onSelect={onSelectExam} />
         ))}
+
         {showEmptyState && (
-          <div className="empty-state">
-            <Icon name="briefcase" size={28} />
-            <h3>Novas oportunidades em breve</h3>
-            <p>Nenhum edital desta trilha na nossa seleção demonstrativa.</p>
-            <button
-              className="text-button"
-              onClick={() => onFilterChange("all")}
-            >
-              Ver todos os editais <Icon name="arrow" size={16} />
-            </button>
-          </div>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Icon name="briefcase" size={26} color={colors.muted} />
+            </View>
+            <AppText variant="subheading" style={styles.emptyTitle}>
+              Novas oportunidades em breve
+            </AppText>
+            <AppText variant="caption" style={styles.emptyText}>
+              Nenhum edital desta trilha na seleção demonstrativa.
+            </AppText>
+            <Button
+              variant="text"
+              label="Ver todos os editais"
+              icon="arrow"
+              onPress={() => onFilterChange("all")}
+            />
+          </View>
         )}
-      </div>
-    </section>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: spacing.md,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  list: {
+    gap: spacing.sm + 2,
+  },
+  emptyState: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: {
+    textAlign: "center",
+  },
+  emptyText: {
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+});

@@ -1,58 +1,117 @@
+import { StyleSheet, View } from "react-native";
 import type { ThemePerformanceRow } from "@/interfaces";
 import { getPriorityColor } from "@/services/statsService";
-import { Icon } from "../common/Icon";
+import { colors, fonts, radius, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Badge } from "../common/Badge";
+import { Card } from "../common/Card";
+import { ProgressBar } from "../common/ProgressBar";
 import { SmartPill } from "../common/SmartPill";
+import { ToneIcon } from "../common/ToneIcon";
 
 interface ThemePerformanceTableProps {
   rows: ThemePerformanceRow[];
 }
 
-/** Desempenho em questões por tema (RF14). */
 export function ThemePerformanceTable({ rows }: ThemePerformanceTableProps) {
   return (
-    <section className="panel performance-panel">
-      <div className="section-heading">
-        <div>
-          <h2>Um olhar para cada tema</h2>
-          <p>O SRS prioriza os conteúdos que precisam de mais atenção.</p>
-        </div>
-        <SmartPill iconSize={14}>Priorização inteligente</SmartPill>
-      </div>
-      <div className="performance-table">
-        <div className="table-head">
-          <span>CONTEÚDO</span>
-          <span>ACERTOS / ERROS</span>
-          <span>APROVEITAMENTO</span>
-          <span>PRIORIDADE SRS</span>
-        </div>
+    <Card style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <AppText variant="heading">Um olhar para cada tema</AppText>
+          <AppText variant="caption">Priorização do SRS</AppText>
+        </View>
+        <SmartPill iconSize={13}>Inteligente</SmartPill>
+      </View>
+
+      <View style={styles.list}>
         {rows.map((row) => (
-          <div className="table-row" key={row.title}>
-            <span className="table-theme">
-              <span className={`subject-icon ${row.color}`}>
-                <Icon name={row.icon} size={18} />
-              </span>
-              <strong>{row.title}</strong>
-            </span>
-            <span className="hit-miss">
-              <b>{row.hits}</b>
-              <span>/</span>
-              {row.errors}
-            </span>
-            <span className="table-progress">
-              <span>
-                <i style={{ width: `${row.percent}%` }} />
-              </span>
-              <strong>{row.percent}%</strong>
-            </span>
-            <span>
-              <span className={`badge ${getPriorityColor(row.priority)}`}>
-                {row.priority === "Alta" && <Icon name="spark" size={12} />}
-                {row.priority}
-              </span>
-            </span>
-          </div>
+          <View key={row.title} style={styles.row}>
+            <View style={styles.topLine}>
+              <View style={styles.titleArea}>
+                <ToneIcon name={row.icon} tone={row.color} size={30} iconSize={16} />
+                <AppText variant="subheading" style={styles.title} numberOfLines={1}>
+                  {row.title}
+                </AppText>
+              </View>
+              <Badge tone={getPriorityColor(row.priority)}>{row.priority}</Badge>
+            </View>
+
+            <View style={styles.metricsLine}>
+              <View style={styles.progressBarWrap}>
+                <ProgressBar percent={row.percent} height={6} />
+              </View>
+              <AppText variant="caption" style={styles.percentText}>
+                {row.percent}%
+              </AppText>
+              <AppText variant="caption" style={styles.hitMiss}>
+                <AppText variant="bodyStrong" style={{ fontSize: 12 }}>
+                  {row.hits}
+                </AppText>
+                /{row.errors}
+              </AppText>
+            </View>
+          </View>
         ))}
-      </div>
-    </section>
+      </View>
+    </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    gap: spacing.md,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerText: {
+    flex: 1,
+    gap: 2,
+  },
+  list: {
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  row: {
+    gap: 8,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  topLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  titleArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  title: {
+    fontSize: 13,
+  },
+  metricsLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingLeft: 38,
+  },
+  progressBarWrap: {
+    flex: 1,
+  },
+  percentText: {
+    width: 36,
+    textAlign: "right",
+    fontFamily: fonts.semibold,
+  },
+  hitMiss: {
+    width: 44,
+    textAlign: "right",
+  },
+});

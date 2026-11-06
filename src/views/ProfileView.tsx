@@ -1,36 +1,28 @@
-import type { ModalType, ProfileFormData, TrackId, User } from "@/interfaces";
 import { PageHeading } from "@/components/common/PageHeading";
+import { ScreenContainer } from "@/components/common/ScreenContainer";
 import { AccountSettingsCard } from "@/components/profile/AccountSettingsCard";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { useApp } from "@/context/AppContext";
 import { getTracks } from "@/services/trackService";
 
-interface ProfileViewProps {
-  user: User;
-  onSelectTrack: (trackId: TrackId) => void;
-  onSave: (data: ProfileFormData) => void;
-  onOpenModal: (modal: ModalType) => void;
-}
+export function ProfileView() {
+  const { user, selectTrack, saveProfile, openModal } = useApp();
 
-/** Gestão de conta e escolha de trilha (RF01–RF05, RF08). */
-export function ProfileView({
-  user,
-  onSelectTrack,
-  onSave,
-  onOpenModal,
-}: ProfileViewProps) {
   return (
-    <>
-      <PageHeading eyebrow="" title="Perfil" />
-      <div className="profile-layout">
-        <div>
-          <ProfileForm
-            user={user}
-            tracks={getTracks()}
-            onSelectTrack={onSelectTrack}
-            onSave={onSave}
-          />
-        </div>
-      </div>
-    </>
+    <ScreenContainer>
+      <PageHeading eyebrow="UMA JORNADA QUE É SUA" title="Perfil" />
+
+      <ProfileForm
+        user={user}
+        tracks={getTracks()}
+        onSelectTrack={selectTrack}
+        onSave={saveProfile}
+      />
+
+      <AccountSettingsCard
+        onResetSchedule={() => openModal("reset")}
+        onDeleteAccount={() => openModal("delete")}
+      />
+    </ScreenContainer>
   );
 }

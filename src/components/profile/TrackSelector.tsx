@@ -1,5 +1,8 @@
+import { Pressable, StyleSheet, View } from "react-native";
 import type { Track, TrackId } from "@/interfaces";
-import { Icon } from "../common/Icon";
+import { colors, radius, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { ToneIcon } from "../common/ToneIcon";
 
 interface TrackSelectorProps {
   tracks: Track[];
@@ -7,39 +10,95 @@ interface TrackSelectorProps {
   onSelect: (trackId: TrackId) => void;
 }
 
-/** Seleção de trilha de estudo (RF05). */
-export function TrackSelector({
-  tracks,
-  selectedId,
-  onSelect,
-}: TrackSelectorProps) {
+export function TrackSelector({ tracks, selectedId, onSelect }: TrackSelectorProps) {
   return (
-    <div className="track-selection">
-      <h2>Qual é sua trilha?</h2>
-      <div className="track-options">
+    <View style={styles.container}>
+      <AppText variant="heading" style={styles.title}>
+        Qual é sua trilha?
+      </AppText>
+      <View style={styles.optionsList}>
         {tracks.map((track) => {
-          const selected = track.id === selectedId;
+          const isSelected = track.id === selectedId;
           return (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              className={`track-option ${selected ? "selected" : ""}`}
-              onClick={() => onSelect(track.id)}
+            <Pressable
               key={track.id}
+              onPress={() => onSelect(track.id)}
+              style={({ pressed }) => [
+                styles.option,
+                isSelected && styles.optionSelected,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
             >
-              <span className="subject-icon purple">
-                <Icon name={track.icon} size={22} />
-              </span>
-              <span>
-                <strong>{track.name}</strong>
-                <small>{track.detail}</small>
-              </span>
-              <span className="track-radio">{selected && <span />}</span>
-            </button>
+              <ToneIcon name={track.icon} tone="purple" size={38} iconSize={20} />
+              <View style={styles.copy}>
+                <AppText variant="subheading" style={styles.name}>
+                  {track.name}
+                </AppText>
+                <AppText variant="caption">{track.detail}</AppText>
+              </View>
+              <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                {isSelected && <View style={styles.radioDot} />}
+              </View>
+            </Pressable>
           );
         })}
-      </div>
-    </div>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    gap: spacing.sm,
+  },
+  title: {
+    fontSize: 16,
+  },
+  optionsList: {
+    gap: spacing.sm,
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: "#ece3f3",
+    borderRadius: radius.md,
+  },
+  optionSelected: {
+    borderColor: "#b99bdc",
+    backgroundColor: "#faf6ff",
+  },
+  pressed: {
+    opacity: 0.8,
+  },
+  copy: {
+    flex: 1,
+    gap: 2,
+  },
+  name: {
+    fontSize: 14,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioSelected: {
+    borderColor: colors.primary,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+});

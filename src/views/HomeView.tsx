@@ -1,27 +1,20 @@
 import { useMemo, useState } from "react";
-import type {
-  AnswerRecord,
-  ExamFilter,
-  PageId,
-  StudyBlock,
-  User,
-} from "@/interfaces";
+import { StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
+import type { ExamFilter, PageId } from "@/interfaces";
+import { AppText } from "@/components/common/AppText";
 import { Icon } from "@/components/common/Icon";
 import { PageHeading } from "@/components/common/PageHeading";
+import { ScreenContainer } from "@/components/common/ScreenContainer";
 import { DailyGoalCard } from "@/components/home/DailyGoalCard";
 import { MetricsRow } from "@/components/home/MetricsRow";
 import { OpportunitiesSection } from "@/components/home/OpportunitiesSection";
 import { TrackCard } from "@/components/home/TrackCard";
-import {
-  filterExams,
-  getExams,
-  hasExamsForTrack,
-} from "@/services/examService";
-import {
-  CURRENT_DATE,
-  formatDayMonth,
-  formatLongDate,
-} from "@/services/formatService";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { useApp } from "@/context/AppContext";
+import { filterExams, getExams, hasExamsForTrack } from "@/services/examService";
+import { CURRENT_DATE, formatDayMonth, formatLongDate } from "@/services/formatService";
+import { routeFor } from "@/services/navigationService";
 import { getGoalPercent } from "@/services/scheduleService";
 import {
   STATS_BASELINE,
@@ -30,31 +23,13 @@ import {
   getStudyHours,
 } from "@/services/statsService";
 import { getTrackById } from "@/services/trackService";
+import { colors, radius, spacing } from "@/theme";
 
-interface HomeViewProps {
-  user: User;
-  blocks: StudyBlock[];
-  completedIds: string[];
-  completedMinutes: number;
-  plannedMinutes: number;
-  answers: AnswerRecord[];
-  onToggleBlock: (blockId: string) => void;
-  onNavigate: (page: PageId) => void;
-  onSelectExam: (examId: string) => void;
-}
+export function HomeView() {
+  const router = useRouter();
+  const { user, completedIds, completedMinutes, plannedMinutes, answers, openExam, openModal } =
+    useApp();
 
-/** Tela inicial: plano do dia, alertas (RF10) e oportunidades (RF11). */
-export function HomeView({
-  user,
-  blocks,
-  completedIds,
-  completedMinutes,
-  plannedMinutes,
-  answers,
-  onToggleBlock,
-  onNavigate,
-  onSelectExam,
-}: HomeViewProps) {
   const [examFilter, setExamFilter] = useState<ExamFilter>("all");
   const exams = getExams();
   const filteredExams = useMemo(
@@ -62,51 +37,72 @@ export function HomeView({
     [exams, examFilter, user.trackId],
   );
 
+  const navigate = (page: PageId) => {
+    router.push(routeFor(page) as any);
+  };
+
   return (
-    <>
+    <ScreenContainer>
+      <AppHeader
+        userName={user.name}
+        streakDays={STATS_BASELINE.focusStreakDays}
+        onOpenNotifications={() => openModal("notifications")}
+        onOpenProfile={() => navigate("profile")}
+      />
+
       <PageHeading
         eyebrow={formatLongDate(CURRENT_DATE).toUpperCase()}
         title="Seu próximo passo é a aprovação"
         aside={
-          <span className="date-pill">
-            <Icon name="calendar" size={16} />
-            {formatDayMonth(CURRENT_DATE)}
-          </span>
+          <View style={styles.datePill}>
+            <Icon name="calendar" size={14} color={colors.muted} />
+            <AppText variant="caption">{formatDayMonth(CURRENT_DATE)}</AppText>
+          </View>
         }
       />
-      <div className="home-grid">
-        <div className="main-column">
-          <MetricsRow
-            studyHours={getStudyHours("week", completedMinutes)}
-            questionsSolved={getQuestionsSolved("week", answers)}
-            accuracyPercent={getAccuracy(answers).percent}
-          />
-          <OpportunitiesSection
-            exams={filteredExams}
-            filter={examFilter}
-            showEmptyState={
-              examFilter === "mine" && !hasExamsForTrack(exams, user.trackId)
-            }
-            onFilterChange={setExamFilter}
-            onSelectExam={onSelectExam}
-          />
-        </div>
-        <aside className="right-column">
-          <DailyGoalCard
-            completedMinutes={completedMinutes}
-            plannedMinutes={plannedMinutes}
-            goalPercent={getGoalPercent(completedMinutes, plannedMinutes)}
-            completedBlocks={completedIds.length}
-            totalBlocks={blocks.length}
-          />
-          <TrackCard
-            track={getTrackById(user.trackId)}
-            progressPercent={STATS_BASELINE.trackProgressPercent}
-            onEdit={() => onNavigate("profile")}
-            onExplore={() => onNavigate("stats")}
-          />
-        </aside>
-      </div>
-    </>
+
+      <MetricsRow
+        studyHours={getStudyHours("week", completedMinutes)}
+        questionsSolved={getQuestionsSolved("week", answers)}
+        accuracyPercent={getAccuracy(answers).percent}
+      />
+
+      <DailyGoalCard
+        completedMinutes={completedMinutes}
+        plannedMinutes={plannedMinutes}
+        goalPercent={getGoalPercent(completedMinutes, plannedMinutes)}
+        completedBlocks={completedIds.length}
+        totalBlocks={3}
+      />
+
+      <TrackCard
+        track={getTrackById(user.trackId)}
+        progressPercent={STATS_BASELINE.trackProgressPercent}
+        onEdit={() => navigate("profile")}
+        onExplore={() => navigate("stats")}
+      />
+
+      <OpportunitiesSection
+        exams={filteredExams}
+        filter={examFilter}
+        showEmptyState={examFilter === "mine" && !hasExamsForTrack(exams, user.trackId)}
+        onFilterChange={setExamFilter}
+        onSelectExam={(id) => openExam(id)}
+      />
+    </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  datePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+});

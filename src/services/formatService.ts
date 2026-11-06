@@ -1,6 +1,31 @@
 /** Data de referência do protótipo. Substituir por `new Date()` ao integrar com a API. */
 export const CURRENT_DATE = new Date(2025, 5, 18);
 
+const WEEKDAYS = [
+  "domingo",
+  "segunda-feira",
+  "terça-feira",
+  "quarta-feira",
+  "quinta-feira",
+  "sexta-feira",
+  "sábado",
+];
+
+const MONTHS = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
 const SHORT_MONTHS = [
   "jan",
   "fev",
@@ -20,27 +45,30 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 
 /** "quarta-feira, 18 de junho de 2025" */
 export function formatLongDate(date: Date): string {
-  return date.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const weekday = WEEKDAYS[date.getDay()];
+  const day = date.getDate();
+  const month = MONTHS[date.getMonth()];
+  const year = date.getFullYear();
+  return `${weekday}, ${day} de ${month} de ${year}`;
 }
 
 /** "18 de junho" */
 export function formatDayMonth(date: Date): string {
-  return date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+  const day = date.getDate();
+  const month = MONTHS[date.getMonth()];
+  return `${day} de ${month}`;
 }
 
 /** "junho" */
 export function formatMonthName(date: Date): string {
-  return date.toLocaleDateString("pt-BR", { month: "long" });
+  return MONTHS[date.getMonth()];
 }
 
 /** "Junho de 2025" */
 export function formatMonthYear(date: Date): string {
-  return capitalize(date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }));
+  const month = capitalize(MONTHS[date.getMonth()]);
+  const year = date.getFullYear();
+  return `${month} de ${year}`;
 }
 
 /** Converte "2025-06-28" em "28 jun, 2025". */
@@ -86,7 +114,11 @@ export function formatDuration(totalMinutes: number): string {
 }
 
 export function formatCurrency(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const formatted = value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `R$ ${formatted}`;
 }
 
 export function formatNumber(value: number): string {

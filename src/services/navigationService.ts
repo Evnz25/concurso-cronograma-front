@@ -23,5 +23,23 @@ export function getNavigation(): NavigationItem[] {
 }
 
 export function getPageTitle(page: PageId): string {
+  if (page === "stats") return "Meu desempenho";
   return NAVIGATION.find((item) => item.id === page)?.name ?? "";
+}
+
+export function routeFor(page: PageId): string {
+  switch (page) {
+    case "home":
+      return "/";
+    case "study":
+      return "/study";
+    case "questions":
+      return "/questions";
+    case "stats":
+      return "/stats";
+    case "profile":
+      return "/profile";
+    default:
+      return "/";
+  }
 }

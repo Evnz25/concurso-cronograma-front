@@ -1,6 +1,10 @@
-import type { CSSProperties } from "react";
+import { StyleSheet, View } from "react-native";
 import { formatDuration } from "@/services/formatService";
+import { colors, fonts, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Card } from "../common/Card";
 import { Icon } from "../common/Icon";
+import { ProgressRing } from "../common/ProgressRing";
 
 interface DailyGoalCardProps {
   completedMinutes: number;
@@ -19,42 +23,69 @@ export function DailyGoalCard({
 }: DailyGoalCardProps) {
   const hours = Math.floor(completedMinutes / 60);
   const minutes = completedMinutes % 60;
+
   return (
-    <section className="panel daily-goal">
-      <div className="section-heading">
-        <h2>Meta diária</h2>
-        <Icon name="target" size={19} />
-      </div>
-      <div
-        className="goal-ring"
-        style={{ "--progress": `${goalPercent}%` } as CSSProperties}
-      >
-        <div>
-          <strong>
-            {hours}
-            <span>h</span>
-            {minutes ? ` ${minutes}` : ""}
-            <span>{minutes ? "min" : ""}</span>
-          </strong>
-          <p>de {formatDuration(plannedMinutes)} planejadas</p>
-        </div>
-      </div>
-      <div className="goal-stats">
-        <span>
-          <strong>
-            {completedBlocks}
-            <small>/ {totalBlocks}</small>
-          </strong>
-          <small>blocos concluídos</small>
-        </span>
-        <span>
-          <strong>
-            {Math.round(goalPercent)}
-            <small>%</small>
-          </strong>
-          <small>da meta de hoje</small>
-        </span>
-      </div>
-    </section>
+    <Card>
+      <View style={styles.header}>
+        <AppText variant="heading">Meta diária</AppText>
+        <Icon name="target" size={20} color={colors.accent} />
+      </View>
+
+      <View style={styles.ringContainer}>
+        <ProgressRing percent={goalPercent} size={140} strokeWidth={11}>
+          <View style={styles.ringCenter}>
+            <AppText variant="metric">
+              {hours}h{minutes ? ` ${minutes}min` : ""}
+            </AppText>
+            <AppText variant="caption">de {formatDuration(plannedMinutes)}</AppText>
+          </View>
+        </ProgressRing>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statCol}>
+          <AppText variant="subheading">
+            {completedBlocks}{" "}
+            <AppText variant="caption" color={colors.muted}>
+              / {totalBlocks}
+            </AppText>
+          </AppText>
+          <AppText variant="caption">blocos concluídos</AppText>
+        </View>
+
+        <View style={styles.statCol}>
+          <AppText variant="subheading">{Math.round(goalPercent)}%</AppText>
+          <AppText variant="caption">da meta de hoje</AppText>
+        </View>
+      </View>
+    </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  ringContainer: {
+    marginVertical: spacing.sm,
+    alignItems: "center",
+  },
+  ringCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSoft,
+  },
+  statCol: {
+    alignItems: "center",
+  },
+});

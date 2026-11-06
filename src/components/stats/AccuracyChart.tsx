@@ -1,38 +1,79 @@
+import { StyleSheet, View } from "react-native";
 import type { AccuracySummary } from "@/interfaces";
+import { colors, radius, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Card } from "../common/Card";
+import { ProgressRing } from "../common/ProgressRing";
 
 interface AccuracyChartProps {
   accuracy: AccuracySummary;
-  /** Percentual exato usado no preenchimento do gráfico. */
   ratio: number;
 }
 
 export function AccuracyChart({ accuracy, ratio }: AccuracyChartProps) {
   return (
-    <section className="panel accuracy-panel">
-      <h2>Aprendizado em evolução</h2>
-      <p>Distribuição das respostas</p>
-      <div
-        className="accuracy-ring"
-        style={{ background: `conic-gradient(#b39ad5 0 ${ratio}%, #f1e5df 0)` }}
-      >
-        <div>
-          <strong>
-            {accuracy.percent}
-            <span>%</span>
-          </strong>
-          <small>de acertos</small>
-        </div>
-      </div>
-      <div className="accuracy-legend">
-        <span>
-          <i />
-          Acertos <strong>{accuracy.hits}</strong>
-        </span>
-        <span>
-          <i />
-          Erros <strong>{accuracy.errors}</strong>
-        </span>
-      </div>
-    </section>
+    <Card style={styles.card}>
+      <AppText variant="heading">Aprendizado em evolução</AppText>
+      <AppText variant="caption">Distribuição das respostas</AppText>
+
+      <View style={styles.ringContainer}>
+        <ProgressRing
+          percent={ratio}
+          size={140}
+          strokeWidth={14}
+          color={colors.accuracyFill}
+          trackColor={colors.accuracyTrack}
+        >
+          <View style={styles.center}>
+            <AppText variant="metric">{accuracy.percent}%</AppText>
+            <AppText variant="caption">de acertos</AppText>
+          </View>
+        </ProgressRing>
+      </View>
+
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: colors.accuracyFill }]} />
+          <AppText variant="caption">
+            Acertos <AppText variant="bodyStrong">{accuracy.hits}</AppText>
+          </AppText>
+        </View>
+
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: colors.accuracyTrack }]} />
+          <AppText variant="caption">
+            Erros <AppText variant="bodyStrong">{accuracy.errors}</AppText>
+          </AppText>
+        </View>
+      </View>
+    </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    gap: 2,
+    alignItems: "center",
+  },
+  ringContainer: {
+    marginVertical: spacing.md,
+  },
+  center: {
+    alignItems: "center",
+  },
+  legend: {
+    flexDirection: "row",
+    gap: spacing.xl,
+    marginTop: spacing.xs,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+});

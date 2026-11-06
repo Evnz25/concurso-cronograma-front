@@ -1,8 +1,12 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
 import type { ProfileFormData, Track, TrackId, User } from "@/interfaces";
 import { MIN_PASSWORD_LENGTH } from "@/services/userService";
+import { colors, fonts, radius, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
 import { Avatar } from "../common/Avatar";
-import { Icon } from "../common/Icon";
+import { Button } from "../common/Button";
+import { Card } from "../common/Card";
 import { TrackSelector } from "./TrackSelector";
 
 interface ProfileFormProps {
@@ -12,82 +16,139 @@ interface ProfileFormProps {
   onSave: (data: ProfileFormData) => void;
 }
 
-/** Criação e edição de perfil (RF01, RF02). */
-export function ProfileForm({
-  user,
-  tracks,
-  onSelectTrack,
-  onSave,
-}: ProfileFormProps) {
+export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileFormProps) {
   const [form, setForm] = useState<ProfileFormData>({
     name: user.name,
     email: user.email,
     password: "",
   });
 
+  useEffect(() => {
+    setForm({
+      name: user.name,
+      email: user.email,
+      password: "",
+    });
+  }, [user]);
+
   const update = (field: keyof ProfileFormData, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = () => {
     onSave(form);
     update("password", "");
   };
 
   return (
-    <form className="panel profile-form" onSubmit={handleSubmit}>
-      <div className="profile-avatar-row">
+    <Card style={styles.card}>
+      {/* Avatar Header */}
+      <View style={styles.avatarRow}>
         <Avatar name={user.name} size="large" />
-        <div>
-          <strong>{user.name || "Boas-vindas ao AprovaTech"}</strong>
-          <span>Seu futuro começa aqui.</span>
-        </div>
-      </div>
-      <div className="form-grid">
-        <label>
-          Nome completo
-          <input
-            required
+        <View style={styles.avatarText}>
+          <AppText variant="subheading">{user.name || "Boas-vindas ao AprovaTech"}</AppText>
+          <AppText variant="caption">Seu futuro começa aqui.</AppText>
+        </View>
+      </View>
+
+      {/* Form Fields */}
+      <View style={styles.fields}>
+        <View style={styles.fieldGroup}>
+          <AppText variant="caption" style={styles.label}>
+            Nome completo
+          </AppText>
+          <TextInput
+            style={styles.input}
             value={form.name}
-            onChange={(e) => update("name", e.target.value)}
+            onChangeText={(v) => update("name", v)}
             placeholder="Como podemos chamar você?"
-            autoComplete="name"
+            placeholderTextColor={colors.muted}
+            autoCapitalize="words"
           />
-        </label>
-        <label>
-          E-mail
-          <input
-            type="email"
-            required
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <AppText variant="caption" style={styles.label}>
+            E-mail
+          </AppText>
+          <TextInput
+            style={styles.input}
             value={form.email}
-            onChange={(e) => update("email", e.target.value)}
+            onChangeText={(v) => update("email", v)}
             placeholder="voce@email.com"
-            autoComplete="email"
+            placeholderTextColor={colors.muted}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
-        </label>
-        <label className="full-width">
-          Senha
-          <input
-            type="password"
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <AppText variant="caption" style={styles.label}>
+            Senha
+          </AppText>
+          <TextInput
+            style={styles.input}
             value={form.password}
-            minLength={MIN_PASSWORD_LENGTH}
-            onChange={(e) => update("password", e.target.value)}
+            onChangeText={(v) => update("password", v)}
             placeholder="Digite uma nova senha"
-            autoComplete="new-password"
+            placeholderTextColor={colors.muted}
+            secureTextEntry
           />
-        </label>
-      </div>
-      <TrackSelector
-        tracks={tracks}
-        selectedId={user.trackId}
-        onSelect={onSelectTrack}
+          <AppText variant="caption" style={styles.hint}>
+            Mínimo de {MIN_PASSWORD_LENGTH} caracteres.
+          </AppText>
+        </View>
+      </View>
+
+      {/* Track Selector */}
+      <TrackSelector tracks={tracks} selectedId={user.trackId} onSelect={onSelectTrack} />
+
+      {/* Submit Button */}
+      <Button
+        label={user.name ? "Salvar alterações" : "Criar perfil"}
+        icon="check"
+        onPress={handleSubmit}
+        fullWidth
       />
-      <div className="form-footer">
-        <button className="primary-button" type="submit">
-          {user.name ? "Salvar alterações" : "Criar perfil"}
-          <Icon name="check" size={17} />
-        </button>
-      </div>
-    </form>
+    </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    gap: spacing.lg,
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  avatarText: {
+    flex: 1,
+    gap: 2,
+  },
+  fields: {
+    gap: spacing.md,
+  },
+  fieldGroup: {
+    gap: 4,
+  },
+  label: {
+    fontFamily: fonts.medium,
+    color: colors.text,
+  },
+  input: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.text,
+  },
+  hint: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+});

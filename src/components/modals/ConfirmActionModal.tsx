@@ -1,5 +1,9 @@
-import { Icon } from "../common/Icon";
+import { StyleSheet, View } from "react-native";
+import { colors, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Button } from "../common/Button";
 import { Modal } from "../common/Modal";
+import { ToneIcon } from "../common/ToneIcon";
 
 interface ConfirmActionModalProps {
   variant: "reset" | "delete";
@@ -9,16 +13,16 @@ interface ConfirmActionModalProps {
 
 const CONTENT = {
   reset: {
-    icon: "calendar",
-    color: "purple",
+    icon: "calendar" as const,
+    tone: "purple" as const,
     title: "Um novo começo?",
     description:
       "Seus blocos concluídos, respostas e intervalos de revisão serão reiniciados. Seu perfil e sua trilha serão mantidos.",
     confirmLabel: "Iniciar novo ciclo",
   },
   delete: {
-    icon: "user",
-    color: "orange",
+    icon: "user" as const,
+    tone: "orange" as const,
     title: "Excluir seu perfil?",
     description:
       "Os dados do perfil e o progresso desta demonstração serão limpos. Esta ação não pode ser desfeita.",
@@ -26,27 +30,59 @@ const CONTENT = {
   },
 } as const;
 
-/** Modal de dupla checagem para novo ciclo (RF08) e exclusão de conta (RF04). */
 export function ConfirmActionModal({ variant, onClose, onConfirm }: ConfirmActionModalProps) {
   const content = CONTENT[variant];
+
   return (
     <Modal onClose={onClose}>
-      <span className={`subject-icon ${content.color}`}>
-        <Icon name={content.icon} size={24} />
-      </span>
-      <h2 id="modal-title">{content.title}</h2>
-      <p>{content.description}</p>
-      <div className="modal-actions">
-        <button className="secondary-button" onClick={onClose}>
-          Cancelar
-        </button>
-        <button
-          className={`primary-button ${variant === "delete" ? "danger-button" : ""}`}
-          onClick={onConfirm}
-        >
-          {content.confirmLabel}
-        </button>
-      </div>
+      <View style={styles.content}>
+        <ToneIcon name={content.icon} tone={content.tone} size={48} iconSize={24} />
+        <AppText variant="heading" style={styles.title}>
+          {content.title}
+        </AppText>
+        <AppText variant="body" style={styles.description}>
+          {content.description}
+        </AppText>
+
+        <View style={styles.actions}>
+          <View style={styles.actionBtn}>
+            <Button variant="secondary" label="Cancelar" onPress={onClose} fullWidth />
+          </View>
+          <View style={styles.actionBtn}>
+            <Button
+              variant={variant === "delete" ? "danger" : "primary"}
+              label={content.confirmLabel}
+              onPress={onConfirm}
+              fullWidth
+            />
+          </View>
+        </View>
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  title: {
+    textAlign: "center",
+    marginTop: spacing.xs,
+  },
+  description: {
+    textAlign: "center",
+    marginBottom: spacing.sm,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    width: "100%",
+    marginTop: spacing.xs,
+  },
+  actionBtn: {
+    flex: 1,
+  },
+});

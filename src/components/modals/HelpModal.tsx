@@ -1,27 +1,64 @@
-import { Icon } from "../common/Icon";
+import { StyleSheet, View } from "react-native";
+import { colors, spacing } from "@/theme";
+import { AppText } from "../common/AppText";
+import { Button } from "../common/Button";
 import { Modal } from "../common/Modal";
+import { ToneIcon } from "../common/ToneIcon";
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={onClose}>
-      <span className="subject-icon purple">
-        <Icon name="help" size={24} />
-      </span>
-      <h2 id="modal-title">Seu guia para a aprovação</h2>
-      <div className="help-items">
-        <h3>1. Escolha sua trilha</h3>
-        <p>No perfil, selecione uma das cinco áreas de TI.</p>
-        <h3>2. Siga o seu ciclo</h3>
-        <p>Conclua os blocos diários e respeite as pausas.</p>
-        <h3>3. Responda e avalie</h3>
-        <p>
-          Na revisão, avalie cada questão como Fácil, Médio ou Difícil para definir o próximo
-          intervalo.
-        </p>
-      </div>
-      <button className="primary-button" onClick={onClose}>
-        Entendi, vamos lá <Icon name="check" size={17} />
-      </button>
+      <View style={styles.content}>
+        <ToneIcon name="help" tone="purple" size={48} iconSize={24} />
+        <AppText variant="heading" style={styles.title}>
+          Seu guia para a aprovação
+        </AppText>
+
+        <View style={styles.items}>
+          <View style={styles.item}>
+            <AppText variant="subheading">1. Escolha sua trilha</AppText>
+            <AppText variant="caption">No perfil, selecione uma das cinco áreas de TI.</AppText>
+          </View>
+
+          <View style={styles.item}>
+            <AppText variant="subheading">2. Siga o seu ciclo</AppText>
+            <AppText variant="caption">
+              Conclua os blocos diários e respeite as pausas programadas.
+            </AppText>
+          </View>
+
+          <View style={styles.item}>
+            <AppText variant="subheading">3. Responda e avalie</AppText>
+            <AppText variant="caption">
+              Na revisão, avalie cada questão para definir o próximo intervalo do SRS.
+            </AppText>
+          </View>
+        </View>
+
+        <Button label="Entendi, vamos lá" icon="check" onPress={onClose} fullWidth />
+      </View>
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.md,
+    alignItems: "center",
+  },
+  title: {
+    textAlign: "center",
+    marginTop: spacing.xs,
+  },
+  items: {
+    gap: spacing.md,
+    width: "100%",
+    paddingVertical: spacing.xs,
+  },
+  item: {
+    gap: 2,
+    backgroundColor: colors.primarySoft,
+    padding: spacing.md,
+    borderRadius: spacing.sm,
+  },
+});
