@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -18,6 +18,8 @@ import { HelpModal } from "@/components/modals/HelpModal";
 import { NotificationsModal } from "@/components/modals/NotificationsModal";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { colors } from "@/theme";
+import { AuthView } from "@/views/AuthView";
+import { ConnectionStatus } from "@/components/common/ConnectionStatus";
 
 // Keep splash screen visible while loading resources
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -46,9 +48,8 @@ function GlobalModalsAndToast() {
         <ExamDetailsModal
           exam={selectedExam}
           onClose={closeModals}
-          onPrepare={(exam) => {
-            prepareForExam(exam);
-            router.push("/study" as any);
+          onPrepare={async (exam) => {
+            if (await prepareForExam(exam)) router.push("/study" as any);
           }}
         />
       )}
@@ -71,10 +72,11 @@ function GlobalModalsAndToast() {
         <ConfirmActionModal
           variant="reset"
           onClose={closeModals}
-          onConfirm={() => {
-            resetProgress();
-            closeModals();
-            router.push("/study" as any);
+          onConfirm={async () => {
+            if (await resetProgress()) {
+              closeModals();
+              router.push("/study" as any);
+            }
           }}
         />
       )}
@@ -83,13 +85,36 @@ function GlobalModalsAndToast() {
         <ConfirmActionModal
           variant="delete"
           onClose={closeModals}
-          onConfirm={() => {
-            deleteAccount();
-            closeModals();
-            router.push("/profile" as any);
+          onConfirm={async (password) => {
+            if (await deleteAccount(password || "")) closeModals();
           }}
         />
       )}
+    </>
+  );
+}
+
+function AppContent() {
+  const { ready, authenticated, isGuest } = useApp();
+  if (!ready) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
+  if (!authenticated && !isGuest) return <AuthView />;
+  return (
+    <>
+      <ConnectionStatus />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="stats"
+          options={{
+            presentation: "card",
+            headerShown: true,
+            headerTitle: "Meu Desempenho",
+            headerTintColor: colors.primary,
+            headerStyle: { backgroundColor: colors.surface },
+          }}
+        />
+      </Stack>
+      <GlobalModalsAndToast />
     </>
   );
 }
@@ -118,20 +143,7 @@ export default function RootLayout() {
     <AppProvider>
       <View style={styles.container}>
         <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="stats"
-            options={{
-              presentation: "card",
-              headerShown: true,
-              headerTitle: "Meu Desempenho",
-              headerTintColor: colors.primary,
-              headerStyle: { backgroundColor: colors.surface },
-            }}
-          />
-        </Stack>
-        <GlobalModalsAndToast />
+        <AppContent />
       </View>
     </AppProvider>
   );

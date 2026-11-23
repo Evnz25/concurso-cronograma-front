@@ -1,4 +1,4 @@
-import { StyleSheet, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 import type { Exam } from "@/interfaces";
 import { formatCurrency, formatShortDate } from "@/services/formatService";
 import { colors, fonts, radius, spacing, tones } from "@/theme";
@@ -39,7 +39,9 @@ export function ExamDetailsModal({ exam, onClose, onPrepare }: ExamDetailsModalP
           </View>
           <View style={styles.metaRow}>
             <Icon name="briefcase" size={15} color={colors.muted} />
-            <AppText variant="caption">{exam.vacancies} vagas</AppText>
+            <AppText variant="caption">
+              {exam.vacancies == null ? "Vagas não informadas" : exam.vacancies + " vagas"}
+            </AppText>
           </View>
           <View style={styles.metaRow}>
             <Icon name="calendar" size={15} color={colors.muted} />
@@ -51,7 +53,7 @@ export function ExamDetailsModal({ exam, onClose, onPrepare }: ExamDetailsModalP
 
         <View style={styles.salaryBox}>
           <AppText variant="metric" color={colors.text}>
-            {formatCurrency(exam.salary)}
+            {exam.salary == null ? "Não informada" : formatCurrency(exam.salary)}
           </AppText>
           <AppText variant="caption">remuneração inicial</AppText>
         </View>
@@ -63,9 +65,19 @@ export function ExamDetailsModal({ exam, onClose, onPrepare }: ExamDetailsModalP
         <View style={styles.infoBox}>
           <Icon name="spark" size={16} color={colors.accent} />
           <AppText variant="caption" style={styles.infoText}>
-            Edital demonstrativo. Consulte os canais oficiais para confirmar vagas.
+            Consulte o edital oficial para confirmar os detalhes do concurso.
           </AppText>
         </View>
+
+        {!!exam.sourceUrl && (
+          <Button
+            label="Abrir edital"
+            variant="secondary"
+            onPress={() => {
+              void Linking.openURL(exam.sourceUrl!);
+            }}
+          />
+        )}
 
         <Button
           label="Preparar para este concurso"

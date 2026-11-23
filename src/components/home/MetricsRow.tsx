@@ -2,10 +2,8 @@ import { StyleSheet, View } from "react-native";
 import { formatNumber } from "@/services/formatService";
 import { colors, fonts, radius, shadows, spacing } from "@/theme";
 import { AppText } from "../common/AppText";
-import { Icon } from "../common/Icon";
-import { ToneIcon } from "../common/ToneIcon";
 
-const SPARKLINE = [20, 35, 26, 45, 38, 54, 62, 48, 70, 61, 82, 98];
+import { ToneIcon } from "../common/ToneIcon";
 
 interface MetricsRowProps {
   studyHours: number;
@@ -27,19 +25,7 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
         <AppText variant="subheading" style={styles.value}>
           {formatNumber(studyHours)}h
         </AppText>
-        <View style={styles.sparklineContainer}>
-          {SPARKLINE.slice(0, 8).map((height, i) => (
-            <View
-              key={i}
-              style={[
-                styles.sparkBar,
-                {
-                  height: `${height}%`,
-                },
-              ]}
-            />
-          ))}
-        </View>
+        <AppText variant="caption">Nesta semana</AppText>
       </View>
 
       {/* Questões */}
@@ -53,12 +39,7 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
         <AppText variant="subheading" style={styles.value}>
           {questionsSolved}
         </AppText>
-        <View style={styles.trendRow}>
-          <Icon name="trend" size={13} color={colors.success} />
-          <AppText variant="caption" color={colors.success}>
-            +24%
-          </AppText>
-        </View>
+        <AppText variant="caption">Nesta semana</AppText>
       </View>
 
       {/* Acertos */}
@@ -72,12 +53,7 @@ export function MetricsRow({ studyHours, questionsSolved, accuracyPercent }: Met
         <AppText variant="subheading" style={styles.value}>
           {accuracyPercent}%
         </AppText>
-        <View style={styles.trendRow}>
-          <Icon name="trend" size={13} color={colors.success} />
-          <AppText variant="caption" color={colors.success}>
-            +5%
-          </AppText>
-        </View>
+        <AppText variant="caption">Nesta semana</AppText>
       </View>
     </View>
   );
@@ -108,24 +84,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 16,
     color: colors.text,
-  },
-  sparklineContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 2,
-    height: 16,
-    marginTop: 6,
-  },
-  sparkBar: {
-    flex: 1,
-    backgroundColor: "#bca4df",
-    borderRadius: 1,
-    minHeight: 3,
-  },
-  trendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    marginTop: 6,
   },
 });

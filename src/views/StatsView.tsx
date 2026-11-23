@@ -11,6 +11,7 @@ import { ThemePerformanceTable } from "@/components/stats/ThemePerformanceTable"
 import { useApp } from "@/context/AppContext";
 import { formatNumber } from "@/services/formatService";
 import {
+  filterAnswers,
   getAccuracy,
   getAccuracyRatio,
   getChartAxis,
@@ -29,9 +30,11 @@ const PERIOD_OPTIONS = [
 ];
 
 export function StatsView() {
-  const { answers, completedMinutes } = useApp();
+  const { answers, allBlocks } = useApp();
   const [period, setPeriod] = useState<StatsPeriod>("week");
-  const accuracy = getAccuracy(answers);
+  const periodAnswers = filterAnswers(answers, period);
+  const accuracy = getAccuracy(periodAnswers);
+  const subjectHours = getSubjectHours(period, allBlocks);
 
   return (
     <ScreenContainer>
@@ -50,9 +53,9 @@ export function StatsView() {
           icon="clock"
           color="purple"
           label="Horas"
-          value={formatNumber(getStudyHours(period, completedMinutes))}
+          value={formatNumber(getStudyHours(period, allBlocks))}
           unit="h"
-          caption="+18%"
+          caption={getPeriodLabel(period)}
         />
         <StatBox
           icon="book"
@@ -67,20 +70,20 @@ export function StatsView() {
           label="Acertos"
           value={accuracy.percent}
           unit="%"
-          caption="+5%"
+          caption={getPeriodLabel(period)}
         />
       </View>
 
       <HoursBarChart
-        data={getSubjectHours(period)}
-        axis={getChartAxis(period)}
-        maxHours={getChartMaxHours(period)}
+        data={subjectHours}
+        axis={getChartAxis(subjectHours)}
+        maxHours={getChartMaxHours(subjectHours)}
         periodLabel={getPeriodLabel(period)}
       />
 
-      <AccuracyChart accuracy={accuracy} ratio={getAccuracyRatio(answers)} />
+      <AccuracyChart accuracy={accuracy} ratio={getAccuracyRatio(periodAnswers)} />
 
-      <ThemePerformanceTable rows={getThemePerformance(answers)} />
+      <ThemePerformanceTable rows={getThemePerformance(periodAnswers)} />
     </ScreenContainer>
   );
 }

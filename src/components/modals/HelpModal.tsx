@@ -17,7 +17,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
         <View style={styles.items}>
           <View style={styles.item}>
             <AppText variant="subheading">1. Escolha sua trilha</AppText>
-            <AppText variant="caption">No perfil, selecione uma das cinco áreas de TI.</AppText>
+            <AppText variant="caption">No perfil, selecione uma das trilhas disponíveis.</AppText>
           </View>
 
           <View style={styles.item}>

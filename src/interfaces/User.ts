@@ -1,6 +1,7 @@
 import type { TrackId } from "./Track";
 
 export interface User {
+  id?: string;
   name: string;
   email: string;
   trackId: TrackId;
@@ -11,4 +12,5 @@ export interface ProfileFormData {
   name: string;
   email: string;
   password: string;
+  currentPassword?: string;
 }

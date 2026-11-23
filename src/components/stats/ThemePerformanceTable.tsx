@@ -25,8 +25,9 @@ export function ThemePerformanceTable({ rows }: ThemePerformanceTableProps) {
       </View>
 
       <View style={styles.list}>
-        {rows.map((row) => (
-          <View key={row.title} style={styles.row}>
+        {!rows.length && <AppText variant="caption">Nenhuma resposta salva neste período.</AppText>}
+        {rows.map((row, index) => (
+          <View key={index} style={styles.row}>
             <View style={styles.topLine}>
               <View style={styles.titleArea}>
                 <ToneIcon name={row.icon} tone={row.color} size={30} iconSize={16} />

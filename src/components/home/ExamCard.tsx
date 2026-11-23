@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import type { Exam } from "@/interfaces";
 import { formatCurrency, formatShortDate } from "@/services/formatService";
-import { getTrackById } from "@/services/trackService";
+
 import { colors, fonts, radius, shadows, spacing, tones } from "@/theme";
 import { AppText } from "../common/AppText";
 import { Badge } from "../common/Badge";
@@ -13,7 +13,6 @@ interface ExamCardProps {
 }
 
 export function ExamCard({ exam, onSelect }: ExamCardProps) {
-  const track = getTrackById(exam.trackId);
   const orgTone = tones[exam.color] ?? tones.blue;
 
   return (
@@ -46,14 +45,14 @@ export function ExamCard({ exam, onSelect }: ExamCardProps) {
             <AppText variant="caption">{exam.place}</AppText>
           </View>
           <View style={styles.detailItem}>
-            <Icon name={track.icon} size={13} color={colors.muted} />
-            <AppText variant="caption">{track.shortName}</AppText>
+            <Icon name="book" size={13} color={colors.muted} />
+            <AppText variant="caption">{exam.trackNames || "Trilha não informada"}</AppText>
           </View>
         </View>
 
         <View style={styles.bottomRow}>
           <AppText variant="bodyStrong" color={colors.primaryText}>
-            {formatCurrency(exam.salary)}
+            {exam.salary == null ? "Salário não informado" : formatCurrency(exam.salary)}
           </AppText>
           <AppText variant="caption">até {formatShortDate(exam.registrationDeadline)}</AppText>
         </View>

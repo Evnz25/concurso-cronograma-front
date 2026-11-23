@@ -5,6 +5,8 @@ import { AppText } from "../common/AppText";
 import { Card } from "../common/Card";
 import { Icon } from "../common/Icon";
 import { ToneIcon } from "../common/ToneIcon";
+import { ProgressBar } from "../common/ProgressBar";
+import { Button } from "../common/Button";
 
 interface TrackCardProps {
   track: Track;
@@ -34,6 +36,11 @@ export function TrackCard({ track, progressPercent, onEdit, onExplore }: TrackCa
           <AppText variant="subheading">{track.name}</AppText>
           <AppText variant="caption">{track.detail}</AppText>
         </View>
+      </View>
+      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+        <AppText variant="caption">{Math.round(progressPercent)}% do cronograma concluído</AppText>
+        <ProgressBar percent={progressPercent} />
+        {onExplore && <Button label="Ver desempenho" variant="text" onPress={onExplore} />}
       </View>
     </Card>
   );

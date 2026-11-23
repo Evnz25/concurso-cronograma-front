@@ -1,4 +1,6 @@
-import { StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { useApp } from "@/context/AppContext";
+import { StyleSheet, TextInput, View } from "react-native";
 import { colors, spacing } from "@/theme";
 import { AppText } from "../common/AppText";
 import { Button } from "../common/Button";
@@ -8,7 +10,7 @@ import { ToneIcon } from "../common/ToneIcon";
 interface ConfirmActionModalProps {
   variant: "reset" | "delete";
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (password?: string) => Promise<void>;
 }
 
 const CONTENT = {
@@ -17,7 +19,7 @@ const CONTENT = {
     tone: "purple" as const,
     title: "Um novo começo?",
     description:
-      "Seus blocos concluídos, respostas e intervalos de revisão serão reiniciados. Seu perfil e sua trilha serão mantidos.",
+      "Um novo cronograma será criado para a trilha atual. Seus estudos e respostas anteriores continuarão no histórico.",
     confirmLabel: "Iniciar novo ciclo",
   },
   delete: {
@@ -25,13 +27,15 @@ const CONTENT = {
     tone: "orange" as const,
     title: "Excluir seu perfil?",
     description:
-      "Os dados do perfil e o progresso desta demonstração serão limpos. Esta ação não pode ser desfeita.",
+      "Sua conta e todo o histórico serão excluídos do servidor. Esta ação não pode ser desfeita.",
     confirmLabel: "Sim, excluir perfil",
   },
 } as const;
 
 export function ConfirmActionModal({ variant, onClose, onConfirm }: ConfirmActionModalProps) {
   const content = CONTENT[variant];
+  const { busy, error } = useApp();
+  const [password, setPassword] = useState("");
 
   return (
     <Modal onClose={onClose}>
@@ -44,15 +48,42 @@ export function ConfirmActionModal({ variant, onClose, onConfirm }: ConfirmActio
           {content.description}
         </AppText>
 
+        {variant === "delete" && (
+          <TextInput
+            accessibilityLabel="Senha atual para excluir conta"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            placeholder="Digite sua senha atual"
+            style={{
+              width: "100%",
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: spacing.md,
+              color: colors.text,
+            }}
+          />
+        )}
+        {!!error && <AppText color={colors.danger}>{error}</AppText>}
         <View style={styles.actions}>
           <View style={styles.actionBtn}>
-            <Button variant="secondary" label="Cancelar" onPress={onClose} fullWidth />
+            <Button
+              variant="secondary"
+              label="Cancelar"
+              disabled={busy}
+              onPress={onClose}
+              fullWidth
+            />
           </View>
           <View style={styles.actionBtn}>
             <Button
               variant={variant === "delete" ? "danger" : "primary"}
               label={content.confirmLabel}
-              onPress={onConfirm}
+              loading={busy}
+              disabled={variant === "delete" && !password}
+              onPress={() => {
+                void onConfirm(password);
+              }}
               fullWidth
             />
           </View>

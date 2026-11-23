@@ -4,74 +4,119 @@ import type {
   ColorTone,
   SrsPriority,
   StatsPeriod,
+  StudyBlock,
   SubjectHours,
   ThemePerformanceRow,
 } from "@/interfaces";
-import { STATS_BASELINE, SUBJECT_HOURS, THEME_PERFORMANCE } from "./mocks/data";
+import { getStartOfWeek, localDate } from "./formatService";
 
-export { STATS_BASELINE };
-
-const MONTH_MULTIPLIER = 4;
-const WEEK_CHART_MAX_HOURS = 6;
-
-export function getAccuracy(answers: AnswerRecord[]): AccuracySummary {
-  const hits = STATS_BASELINE.hits + answers.filter((a) => a.correct).length;
-  const errors = STATS_BASELINE.errors + answers.filter((a) => !a.correct).length;
-  const total = hits + errors;
-  return { hits, errors, total, percent: total ? Math.round((hits / total) * 100) : 0 };
+function inPeriod(date: string | null | undefined, period: StatsPeriod): boolean {
+  if (!date) return false;
+  const now = new Date();
+  const start =
+    period === "week" ? getStartOfWeek(now) : new Date(now.getFullYear(), now.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
+  const time = new Date(date).getTime();
+  return time >= start.getTime() && time <= now.getTime();
 }
-
-/** Percentual exato (sem arredondamento), usado em gráficos. */
+export function filterAnswers(answers: AnswerRecord[], period: StatsPeriod): AnswerRecord[] {
+  return answers.filter((answer) => inPeriod(answer.answeredAt, period));
+}
+export function getAccuracy(answers: AnswerRecord[]): AccuracySummary {
+  const hits = answers.filter((answer) => answer.correct).length;
+  const total = answers.length;
+  return {
+    hits,
+    errors: total - hits,
+    total,
+    percent: total ? Math.round((hits / total) * 100) : 0,
+  };
+}
 export function getAccuracyRatio(answers: AnswerRecord[]): number {
   const { hits, total } = getAccuracy(answers);
   return total ? (hits / total) * 100 : 0;
 }
-
-export function getStudyHours(period: StatsPeriod, completedMinutes: number): number {
-  const base = period === "week" ? STATS_BASELINE.weekHours : STATS_BASELINE.monthHours;
-  return base + completedMinutes / 60;
+export function getStudyHours(period: StatsPeriod, blocks: StudyBlock[]): number {
+  return (
+    blocks
+      .filter((block) => block.completed && inPeriod(block.completedAt, period))
+      .reduce((total, block) => total + block.durationMinutes, 0) / 60
+  );
 }
-
 export function getQuestionsSolved(period: StatsPeriod, answers: AnswerRecord[]): number {
-  const base = period === "week" ? STATS_BASELINE.weekQuestions : STATS_BASELINE.monthQuestions;
-  return base + answers.length;
+  return filterAnswers(answers, period).length;
 }
-
-/** RF10: questões aguardando revisão. */
 export function getPendingReviewCount(answers: AnswerRecord[]): number {
-  return Math.max(0, STATS_BASELINE.pendingReviews - answers.length);
-}
-
-export function getSubjectHours(period: StatsPeriod): SubjectHours[] {
-  const multiplier = period === "week" ? 1 : MONTH_MULTIPLIER;
-  return SUBJECT_HOURS.map((item) => ({ ...item, hours: item.hours * multiplier }));
-}
-
-export function getChartMaxHours(period: StatsPeriod): number {
-  return period === "week" ? WEEK_CHART_MAX_HOURS : WEEK_CHART_MAX_HOURS * MONTH_MULTIPLIER;
-}
-
-/** Rótulos do eixo Y do gráfico de barras (do maior para o menor). */
-export function getChartAxis(period: StatsPeriod): string[] {
-  const max = getChartMaxHours(period);
-  return [max, (max * 2) / 3, max / 3, 0].map((value) => `${value}h`);
-}
-
-export function getThemePerformance(answers: AnswerRecord[]): ThemePerformanceRow[] {
-  return THEME_PERFORMANCE.map((row) => {
-    const themeAnswers = answers.filter((a) => a.theme === row.title);
-    const hits = row.hits + themeAnswers.filter((a) => a.correct).length;
-    const errors = row.errors + themeAnswers.filter((a) => !a.correct).length;
-    return { ...row, hits, errors, percent: Math.round((hits / (hits + errors)) * 100) };
+  const latest = new Map<string, AnswerRecord>();
+  answers.forEach((answer) => {
+    if (
+      !latest.has(answer.questionId) ||
+      latest.get(answer.questionId)!.answeredAt <= answer.answeredAt
+    )
+      latest.set(answer.questionId, answer);
   });
+  return [...latest.values()].filter(
+    (answer) => answer.nextReview && answer.nextReview <= localDate(),
+  ).length;
 }
-
+export function getSubjectHours(period: StatsPeriod, blocks: StudyBlock[]): SubjectHours[] {
+  const rows = new Map<string, SubjectHours>();
+  blocks
+    .filter((block) => block.completed && inPeriod(block.completedAt, period))
+    .forEach((block) => {
+      const key = block.subjectId || block.title;
+      const row = rows.get(key) || { title: block.title, hours: 0, color: block.color };
+      row.hours += block.durationMinutes / 60;
+      rows.set(key, row);
+    });
+  return [...rows.values()];
+}
+export function getChartMaxHours(data: SubjectHours[]): number {
+  return Math.max(3, Math.ceil(Math.max(0, ...data.map((row) => row.hours)) / 3) * 3);
+}
+export function getChartAxis(data: SubjectHours[]): string[] {
+  const max = getChartMaxHours(data);
+  return [max, (max * 2) / 3, max / 3, 0].map((value) => value + "h");
+}
+export function getThemePerformance(answers: AnswerRecord[]): ThemePerformanceRow[] {
+  const rows = new Map<string, ThemePerformanceRow>();
+  answers.forEach((answer) => {
+    const key = answer.themeId || answer.theme;
+    const row: ThemePerformanceRow = rows.get(key) || {
+      title: answer.theme,
+      icon: "book",
+      color: "purple",
+      hits: 0,
+      errors: 0,
+      percent: 0,
+      priority: "Em dia",
+    };
+    answer.correct ? row.hits++ : row.errors++;
+    row.percent = Math.round((row.hits / (row.hits + row.errors)) * 100);
+    row.priority = row.percent < 50 ? "Alta" : row.percent < 80 ? "Média" : "Em dia";
+    rows.set(key, row);
+  });
+  return [...rows.values()];
+}
+export function getFocusStreak(answers: AnswerRecord[], blocks: StudyBlock[]): number {
+  const days = new Set([
+    ...answers.map((answer) => localDate(new Date(answer.answeredAt))),
+    ...blocks
+      .filter((block) => block.completed && block.completedAt)
+      .map((block) => localDate(new Date(block.completedAt!))),
+  ]);
+  const day = new Date();
+  if (!days.has(localDate(day))) day.setDate(day.getDate() - 1);
+  let count = 0;
+  while (days.has(localDate(day))) {
+    count++;
+    day.setDate(day.getDate() - 1);
+  }
+  return count;
+}
 export function getPriorityColor(priority: SrsPriority): ColorTone {
-  if (priority === "Alta") return "orange";
-  if (priority === "Média") return "purple";
-  return "green";
+  return priority === "Alta" ? "orange" : priority === "Média" ? "purple" : "green";
 }
-
 export function getPeriodLabel(period: StatsPeriod): string {
   return period === "week" ? "Nesta semana" : "Neste mês";
 }

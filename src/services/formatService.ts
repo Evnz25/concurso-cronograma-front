@@ -1,5 +1,9 @@
-/** Data de referência do protótipo. Substituir por `new Date()` ao integrar com a API. */
-export const CURRENT_DATE = new Date(2025, 5, 18);
+export const CURRENT_DATE = new Date();
+
+/** Dia local, sem converter meia-noite para outro fuso horário. */
+export function localDate(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 const WEEKDAYS = [
   "domingo",

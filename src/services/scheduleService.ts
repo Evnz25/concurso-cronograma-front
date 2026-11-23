@@ -1,7 +1,7 @@
 import type { DayPlan, StudyBlock, StudyBreak, WeekDay } from "@/interfaces";
-import { STUDY_BLOCKS } from "./mocks/data";
+
 import {
-  CURRENT_DATE,
+  localDate,
   formatDuration,
   formatMonthName,
   getStartOfWeek,
@@ -17,11 +17,6 @@ export const BREAK_MINUTES = 15;
 const MAX_SCHEDULED_BREAK_MINUTES = 30;
 
 const WEEK_DAY_LABELS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
-const STUDY_DAYS_PER_WEEK = 5;
-
-export function getTodayBlocks(): StudyBlock[] {
-  return STUDY_BLOCKS;
-}
 
 export function getBlockEndMinutes(block: StudyBlock): number {
   return timeToMinutes(block.startTime) + block.durationMinutes;
@@ -29,7 +24,7 @@ export function getBlockEndMinutes(block: StudyBlock): number {
 
 /** Retorna a pausa programada que antecede o bloco no índice informado, se houver. */
 export function getBreakBefore(blocks: StudyBlock[], index: number): StudyBreak | null {
-  if (index <= 0) return null;
+  if (index <= 0 || !blocks[index]?.startTime || !blocks[index - 1]?.startTime) return null;
   const previousEnd = getBlockEndMinutes(blocks[index - 1]);
   const currentStart = timeToMinutes(blocks[index].startTime);
   const gap = currentStart - previousEnd;
@@ -81,72 +76,35 @@ export function getGoalPercent(completedMinutes: number, plannedMinutes: number)
   return Math.min(100, (completedMinutes / plannedMinutes) * 100);
 }
 
-export function getWeekDays(reference: Date = CURRENT_DATE): WeekDay[] {
+export function getWeekDays(reference: Date = new Date(), blocks: StudyBlock[] = []): WeekDay[] {
   const monday = getStartOfWeek(reference);
   return WEEK_DAY_LABELS.map((label, index) => {
     const date = new Date(monday);
     date.setDate(monday.getDate() + index);
+    const key = localDate(date);
     return {
       label,
       day: date.getDate(),
-      isPast: date < reference && date.getDate() !== reference.getDate(),
-      isToday: date.getDate() === reference.getDate(),
-      hasStudy: index < STUDY_DAYS_PER_WEEK,
+      date: key,
+      isPast: key < localDate(reference),
+      isToday: key === localDate(reference),
+      hasStudy: blocks.some((block) => block.date === key),
     };
   });
 }
-
-export function getDayPlan(
-  weekDay: WeekDay,
-  blocks: StudyBlock[],
-  completedCount: number,
-  reference: Date = CURRENT_DATE,
-): DayPlan {
-  const monthName = formatMonthName(reference);
-  const title = weekDay.isToday ? "Seu plano de hoje" : `Plano de ${weekDay.day} de ${monthName}`;
-
-  if (weekDay.isToday) {
-    return {
-      status: "today",
-      title,
-      subtitle: `${getPlannedMinutes(blocks) / 60} horas de foco · ${blocks.length} blocos de estudo`,
-      badge: `${completedCount} de ${blocks.length} concluídos`,
-      emptyTitle: "",
-      emptyDescription: "",
-    };
-  }
-
-  if (!weekDay.hasStudy) {
-    return {
-      status: "rest",
-      title,
-      subtitle: "Um respiro também faz parte da jornada.",
-      badge: "Descanso",
-      emptyTitle: "Tempo para recarregar",
-      emptyDescription:
-        "Aproveite sua pausa programada. Seu próximo ciclo começa na segunda-feira.",
-    };
-  }
-
-  if (weekDay.isPast) {
-    return {
-      status: "past",
-      title,
-      subtitle: "Seu próximo ciclo de revisão.",
-      badge: "Planejado",
-      emptyTitle: "Seu histórico de estudos",
-      emptyDescription:
-        "Os blocos desta data já foram finalizados. Continue a jornada no plano de hoje.",
-    };
-  }
-
+export function getDayPlan(day: WeekDay, blocks: StudyBlock[], completedCount: number): DayPlan {
   return {
-    status: "planned",
-    title,
-    subtitle: "Seu próximo ciclo de revisão.",
-    badge: "Planejado",
-    emptyTitle: "Preparando o próximo passo",
-    emptyDescription: `Revisão de Banco de Dados · ${formatDuration(60)}`,
-    extraInfo: `Engenharia de Software · ${formatDuration(90)} · Pausa de ${BREAK_MINUTES} min entre blocos`,
+    status: day.isToday ? "today" : day.isPast ? "past" : "planned",
+    title: day.isToday
+      ? "Seu plano de hoje"
+      : "Plano de " + day.date?.split("-").reverse().join("/"),
+    subtitle:
+      formatDuration(getPlannedMinutes(blocks)) +
+      " de foco · " +
+      blocks.length +
+      " blocos de estudo",
+    badge: completedCount + " de " + blocks.length + " concluídos",
+    emptyTitle: "Sem estudos agendados nesta data",
+    emptyDescription: "Você pode iniciar um novo cronograma no perfil.",
   };
 }

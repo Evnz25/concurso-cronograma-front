@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import type { ProfileFormData, Track, TrackId, User } from "@/interfaces";
+import { useApp } from "@/context/AppContext";
 import { MIN_PASSWORD_LENGTH } from "@/services/userService";
 import { colors, fonts, radius, spacing } from "@/theme";
 import { AppText } from "../common/AppText";
@@ -13,10 +14,11 @@ interface ProfileFormProps {
   user: User;
   tracks: Track[];
   onSelectTrack: (trackId: TrackId) => void;
-  onSave: (data: ProfileFormData) => void;
+  onSave: (data: ProfileFormData) => Promise<boolean>;
 }
 
 export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileFormProps) {
+  const { busy } = useApp();
   const [form, setForm] = useState<ProfileFormData>({
     name: user.name,
     email: user.email,
@@ -29,14 +31,16 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
       email: user.email,
       password: "",
     });
-  }, [user]);
+  }, [user.name, user.email]);
 
   const update = (field: keyof ProfileFormData, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleSubmit = () => {
-    onSave(form);
-    update("password", "");
+  const handleSubmit = async () => {
+    if (await onSave(form)) {
+      update("password", "");
+      update("currentPassword", "");
+    }
   };
 
   return (
@@ -83,7 +87,7 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
 
         <View style={styles.fieldGroup}>
           <AppText variant="caption" style={styles.label}>
-            Senha
+            Nova senha (opcional)
           </AppText>
           <TextInput
             style={styles.input}
@@ -99,6 +103,19 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
         </View>
       </View>
 
+      <View style={styles.fieldGroup}>
+        <AppText variant="caption" style={styles.label}>
+          Senha atual
+        </AppText>
+        <TextInput
+          style={styles.input}
+          value={form.currentPassword || ""}
+          onChangeText={(v) => update("currentPassword", v)}
+          secureTextEntry
+          placeholder="Obrigatória ao trocar e-mail ou senha"
+        />
+      </View>
+
       {/* Track Selector */}
       <TrackSelector tracks={tracks} selectedId={user.trackId} onSelect={onSelectTrack} />
 
@@ -107,6 +124,12 @@ export function ProfileForm({ user, tracks, onSelectTrack, onSave }: ProfileForm
         label={user.name ? "Salvar alterações" : "Criar perfil"}
         icon="check"
         onPress={handleSubmit}
+        loading={busy}
+        disabled={
+          !form.name.trim() ||
+          !form.email.trim() ||
+          (!!form.password && form.password.length < MIN_PASSWORD_LENGTH)
+        }
         fullWidth
       />
     </Card>

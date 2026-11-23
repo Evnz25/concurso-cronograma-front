@@ -1,3 +1,4 @@
+import { useApp } from "@/context/AppContext";
 import { Pressable, StyleSheet, View } from "react-native";
 import type { StudyBlock } from "@/interfaces";
 import { formatDuration } from "@/services/formatService";
@@ -21,6 +22,7 @@ export function StudyBlockList({
   onToggle,
   compact = false,
 }: StudyBlockListProps) {
+  const { busy } = useApp();
   return (
     <View style={styles.container}>
       {blocks.map((block, index) => {
@@ -45,7 +47,8 @@ export function StudyBlockList({
             <View style={[styles.block, done && styles.blockDone]}>
               <Pressable
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: done }}
+                accessibilityState={{ checked: done, disabled: busy }}
+                disabled={busy}
                 accessibilityLabel={`Concluir ${block.title}`}
                 onPress={() => onToggle(block.id)}
                 style={[styles.checkbox, done && styles.checkboxChecked]}
@@ -64,7 +67,7 @@ export function StudyBlockList({
                   {block.title}
                 </AppText>
                 <AppText variant="caption" numberOfLines={1}>
-                  {compact ? `${block.startTime} · ${duration}` : block.topic}
+                  {compact ? duration : block.topic}
                 </AppText>
               </View>
 
@@ -72,7 +75,8 @@ export function StudyBlockList({
                 <Badge tone={done ? "green" : block.color}>{done ? "Concluído" : block.tag}</Badge>
                 {!compact && (
                   <AppText variant="caption" style={styles.timeText}>
-                    {block.startTime} · {duration}
+                    {block.startTime ? block.startTime + " · " : ""}
+                    {duration}
                   </AppText>
                 )}
               </View>

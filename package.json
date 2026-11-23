@@ -9,6 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.cjs",
+    "api:proxy": "node scripts/api-proxy.cjs",
     "format": "oxfmt"
   },
   "dependencies": {

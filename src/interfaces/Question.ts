@@ -3,6 +3,9 @@ import type { IconName } from "./Icon";
 /** Questão de concurso agrupada por tema (RF07). */
 export interface Question {
   id: string;
+  trackId?: string;
+  themeId?: string;
+  sourceUrl?: string;
   theme: string;
   topic: string;
   source: string;
@@ -14,6 +17,9 @@ export interface Question {
 
 /** Resultado de uma questão respondida (base para o modo offline - RNF04). */
 export interface AnswerRecord {
+  id?: string;
+  themeId?: string;
+  nextReview?: string | null;
   questionId: string;
   theme: string;
   correct: boolean;

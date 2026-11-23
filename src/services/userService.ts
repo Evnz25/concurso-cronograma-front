@@ -2,8 +2,8 @@ import type { User } from "@/interfaces";
 import { DEFAULT_TRACK_ID } from "./trackService";
 
 export const DEFAULT_USER: User = {
-  name: "Lucas Oliveira",
-  email: "lucas.oliveira@email.com",
+  name: "Estudante",
+  email: "estudante@aprovatech.com",
   trackId: DEFAULT_TRACK_ID,
 };
 

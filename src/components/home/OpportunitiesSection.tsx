@@ -55,7 +55,7 @@ export function OpportunitiesSection({
               Novas oportunidades em breve
             </AppText>
             <AppText variant="caption" style={styles.emptyText}>
-              Nenhum edital desta trilha na seleção demonstrativa.
+              Nenhum edital aberto encontrado para este filtro.
             </AppText>
             <Button
               variant="text"

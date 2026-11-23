@@ -1,3 +1,4 @@
+import { AppText } from "@/components/common/AppText";
 import { useRouter } from "expo-router";
 import { PageHeading } from "@/components/common/PageHeading";
 import { ScreenContainer } from "@/components/common/ScreenContainer";
@@ -13,8 +14,8 @@ export function QuestionsView() {
 
   const question = questions[session.index];
 
-  const handleNext = () => {
-    const isFinished = goToNextQuestion();
+  const handleNext = async () => {
+    const isFinished = await goToNextQuestion();
     if (isFinished) {
       router.push("/stats" as any);
     }
@@ -28,19 +29,26 @@ export function QuestionsView() {
         aside={<SmartPill>Revisão espaçada</SmartPill>}
       />
 
-      <QuestionCard
-        question={question}
-        position={session.index + 1}
-        total={questions.length}
-        selectedOption={session.selectedOption}
-        revealed={session.revealed}
-        rating={session.rating}
-        isLast={isLastQuestion(session, questions.length)}
-        onSelectOption={selectOption}
-        onConfirm={confirmAnswer}
-        onRate={rateQuestion}
-        onNext={handleNext}
-      />
+      {question ? (
+        <QuestionCard
+          question={question}
+          position={session.index + 1}
+          total={questions.length}
+          selectedOption={session.selectedOption}
+          revealed={session.revealed}
+          rating={session.rating}
+          isLast={isLastQuestion(session, questions.length)}
+          onSelectOption={selectOption}
+          onConfirm={confirmAnswer}
+          onRate={rateQuestion}
+          onNext={handleNext}
+        />
+      ) : (
+        <AppText>
+          Nenhuma questão cadastrada para esta trilha. Escolha outra trilha no perfil ou atualize os
+          dados.
+        </AppText>
+      )}
     </ScreenContainer>
   );
 }

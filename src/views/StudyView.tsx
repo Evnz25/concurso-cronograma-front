@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { AppText } from "@/components/common/AppText";
 import { Badge } from "@/components/common/Badge";
@@ -10,17 +10,19 @@ import { DayOverview } from "@/components/schedule/DayOverview";
 import { StudyBlockList } from "@/components/schedule/StudyBlockList";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
 import { useApp } from "@/context/AppContext";
-import { CURRENT_DATE, formatMonthYear, getIsoWeek } from "@/services/formatService";
+import { formatMonthYear, getIsoWeek } from "@/services/formatService";
 import { getDayPlan, getWeekDays } from "@/services/scheduleService";
 import { spacing } from "@/theme";
 
 export function StudyView() {
-  const { blocks, completedIds, toggleBlock } = useApp();
+  const { scheduleBlocks, toggleBlock } = useApp();
 
-  const weekDays = useMemo(() => getWeekDays(), []);
+  const weekDays = getWeekDays(new Date(), scheduleBlocks);
   const today = weekDays.find((day) => day.isToday) ?? weekDays[0];
   const [selectedDay, setSelectedDay] = useState(today.day);
   const selectedWeekDay = weekDays.find((day) => day.day === selectedDay) ?? today;
+  const blocks = scheduleBlocks.filter((block) => block.date === selectedWeekDay.date);
+  const completedIds = blocks.filter((block) => block.completed).map((block) => block.id);
   const plan = getDayPlan(selectedWeekDay, blocks, completedIds.length);
 
   return (
@@ -28,12 +30,12 @@ export function StudyView() {
       <PageHeading
         eyebrow="SEU PLANO, NO SEU RITMO"
         title="Cronograma"
-        aside={<SmartPill>SRS ativo</SmartPill>}
+        aside={<SmartPill>Ciclo de estudos</SmartPill>}
       />
 
       <WeekCalendar
-        monthLabel={formatMonthYear(CURRENT_DATE)}
-        weekNumber={getIsoWeek(CURRENT_DATE)}
+        monthLabel={formatMonthYear(new Date())}
+        weekNumber={getIsoWeek(new Date())}
         days={weekDays}
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
@@ -47,7 +49,7 @@ export function StudyView() {
         <Badge tone="purple">{plan.badge}</Badge>
       </View>
 
-      {plan.status === "today" ? (
+      {blocks.length > 0 ? (
         <Card>
           <StudyBlockList blocks={blocks} completedIds={completedIds} onToggle={toggleBlock} />
         </Card>

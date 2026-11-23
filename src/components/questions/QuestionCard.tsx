@@ -1,3 +1,4 @@
+import { useApp } from "@/context/AppContext";
 import { Pressable, StyleSheet, View } from "react-native";
 import type { Difficulty, Question } from "@/interfaces";
 import { getOptionLetter, isCorrectAnswer } from "@/services/questionService";
@@ -37,6 +38,7 @@ export function QuestionCard({
   onRate,
   onNext,
 }: QuestionCardProps) {
+  const { busy } = useApp();
   const correct = isCorrectAnswer(question, selectedOption);
   const progressPercent = (position / total) * 100;
 
@@ -74,7 +76,7 @@ export function QuestionCard({
 
           return (
             <Pressable
-              key={option}
+              key={index}
               disabled={revealed}
               onPress={() => onSelectOption(index)}
               style={({ pressed }) => [
@@ -155,11 +157,18 @@ export function QuestionCard({
           </View>
 
           <DifficultyRating rating={rating} onRate={onRate} />
+          {!correct && (
+            <AppText variant="caption">
+              Respostas incorretas serão revisadas amanhã, independentemente da dificuldade
+              escolhida.
+            </AppText>
+          )}
 
           <Button
-            label={isLast ? "Concluir sessão" : "Próxima questão"}
+            label={isLast ? "Salvar e concluir sessão" : "Salvar e próxima questão"}
             icon="arrow"
             disabled={!rating}
+            loading={busy}
             onPress={onNext}
             fullWidth
           />

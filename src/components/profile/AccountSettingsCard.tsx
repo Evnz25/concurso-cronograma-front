@@ -30,7 +30,7 @@ export function AccountSettingsCard({
           <View style={styles.actionText}>
             <AppText variant="subheading">Iniciar novo cronograma</AppText>
             <AppText variant="caption">
-              Recomece seu ciclo de estudos e as revisões do algoritmo.
+              Crie um novo ciclo e preserve seu histórico de estudos.
             </AppText>
           </View>
         </View>

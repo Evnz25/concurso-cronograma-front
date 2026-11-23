@@ -1,0 +1,377 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const http = require("node:http");
+const { PassThrough, Readable, Writable } = require("node:stream");
+const { loadTs } = require("./load-ts.cjs");
+const { createApiClient, ApiError } = loadTs("src/services/apiService.ts");
+const { mapTrack, mapQuestion, mapExam, mapBlocks, mapAttempt, createScheduleOperations } = loadTs(
+  "src/services/apiAdapters.ts",
+);
+const stats = loadTs("src/services/statsService.ts");
+const { localDate } = loadTs("src/services/formatService.ts");
+const { filterExams } = loadTs("src/services/examService.ts");
+const { getWeekDays } = loadTs("src/services/scheduleService.ts");
+const { createProxy } = require("../scripts/api-proxy.cjs");
+
+// Formatos reais das rotas catalogo.js e sync.js, incluindo IDs não conhecidos pelo protótipo.
+const tracks = [
+  {
+    _id: "trilha-dev",
+    nome: "Desenvolvimento",
+    materias: [
+      { _id: "mat-db", nome: "Banco de dados", temas: [{ _id: "tema-sql", nome: "SQL" }] },
+    ],
+  },
+  { _id: "trilha-dados", nome: "Dados", materias: [] },
+];
+const rawQuestion = {
+  _id: "q-1",
+  materiaId: "mat-db",
+  temaId: "tema-sql",
+  enunciado: "Qual comando consulta dados?",
+  alternativas: ["INSERT", "SELECT"],
+  gabarito: "B",
+  banca: "Banca",
+  ano: 2026,
+};
+const rawExam = {
+  _id: "c-1",
+  orgao: "Órgão Exemplo",
+  cargo: "Analista",
+  localizacao: "Brasil",
+  fimEdital: "2026-12-01T00:00:00.000Z",
+  trilhaIds: ["trilha-dev", "trilha-dados"],
+};
+const basePage = {
+  usuario: { id: "u-1", nome: "Pessoa", email: "pessoa@example.com" },
+  cronogramas: [],
+  tentativas: [],
+  tem_mais: false,
+  proximo_desde: "2026-11-23T12:00:00Z",
+};
+function mockResponses(t, responses) {
+  const requests = [];
+  t.mock.method(global, "fetch", async (url, options) => {
+    requests.push({ url, options });
+    assert.ok(responses.length, "requisição extra inesperada");
+    const { body, status = 200 } = responses.shift();
+    return new Response(typeof body === "string" ? body : JSON.stringify(body), { status });
+  });
+  return requests;
+}
+
+test("converte catálogo, gabarito, múltiplas trilhas e campos ausentes", () => {
+  assert.equal(mapTrack(tracks[0]).id, "trilha-dev");
+  const question = mapQuestion(rawQuestion, tracks);
+  assert.equal(question.correctIndex, 1);
+  assert.equal(question.theme, "SQL");
+  assert.equal(question.topic, "Banco de dados");
+  assert.equal(question.trackId, "trilha-dev");
+  const exam = mapExam(rawExam, tracks);
+  assert.equal(exam.salary, null);
+  assert.equal(exam.vacancies, null);
+  assert.equal(exam.registrationDeadline, "2026-12-01");
+  assert.equal(filterExams([exam], "mine", "trilha-dados").length, 1);
+  assert.equal(filterExams([exam], "mine", "outra").length, 0);
+});
+
+test("baixa todas as páginas de questões e codifica IDs", async (t) => {
+  const requests = mockResponses(t, [
+    { body: { total: 2, questoes: [rawQuestion] } },
+    { body: { total: 2, questoes: [{ ...rawQuestion, _id: "q-2" }] } },
+  ]);
+  assert.equal((await createApiClient("http://api").questions("trilha a&b")).length, 2);
+  assert.match(requests[0].url, /trilhaId=trilha%20a%26b/);
+  assert.match(requests[1].url, /pagina=2/);
+});
+
+test("sync deduplica borda inclusiva e preserva cronogramas das páginas anteriores", async (t) => {
+  mockResponses(t, [
+    {
+      body: {
+        ...basePage,
+        tem_mais: true,
+        proximo_desde: "2026-11-22T12:00:00Z",
+        cronogramas: [{ id: "cron-1" }],
+        tentativas: [{ id: "t-1" }],
+      },
+    },
+    { body: { ...basePage, tentativas: [{ id: "t-1" }, { id: "t-2" }] } },
+  ]);
+  const result = await createApiClient("http://api").download("token");
+  assert.equal(result.tentativas.length, 2);
+  assert.equal(result.cronogramas.length, 1);
+});
+
+test("interrompe paginação sem progresso em vez de travar a interface", async (t) => {
+  const body = { ...basePage, tem_mais: true, tentativas: [{ id: "t-1" }] };
+  mockResponses(t, [{ body }, { body }]);
+  await assert.rejects(createApiClient("http://api").download("token"), /cursor adicional/);
+});
+
+test("envia JWT e JSON e propaga erro de autenticação", async (t) => {
+  const requests = mockResponses(t, [{ status: 401, body: { erro: "Sessão expirada." } }]);
+  await assert.rejects(
+    createApiClient("http://api/").request("/conta", "abc", "PATCH", { nome: "Pessoa" }),
+    (error) =>
+      error instanceof ApiError && error.status === 401 && error.message === "Sessão expirada.",
+  );
+  assert.equal(requests[0].url, "http://api/conta");
+  assert.equal(requests[0].options.headers.Authorization, "Bearer abc");
+  assert.deepEqual(JSON.parse(requests[0].options.body), { nome: "Pessoa" });
+});
+
+test("trata resposta não JSON, falha de rede e HTTP 429", async (t) => {
+  mockResponses(t, [
+    { body: "<html>Erro</html>", status: 502 },
+    { body: { erro: "Aguarde." }, status: 429 },
+  ]);
+  await assert.rejects(createApiClient("http://api").tracks(), /JSON válido/);
+  await assert.rejects(
+    createApiClient("http://api").tracks(),
+    (error) => error.status === 429 && error.message === "Aguarde.",
+  );
+  t.mock.restoreAll();
+  t.mock.method(global, "fetch", async () => {
+    throw new TypeError("fetch failed");
+  });
+  await assert.rejects(createApiClient("http://api").tracks(), /Não foi possível acessar/);
+});
+
+test("HTTP 200 com operação rejeitada ou ignorada não é tratado como sucesso", async (t) => {
+  mockResponses(t, [
+    { body: { resultados: [{ id: 1, status: "rejeitada", motivo: "Matéria inválida." }] } },
+    { body: { resultados: [{ id: 1, status: "ok", ignorada: true }] } },
+    { body: { resultados: [] } },
+  ]);
+  const api = createApiClient("http://api");
+  const operations = [
+    { id: 1, entidade: "etapa_estudo", entidade_id: "e-1", operacao: "update", payload: {} },
+  ];
+  await assert.rejects(api.upload("token", operations), /Matéria inválida/);
+  await assert.rejects(api.upload("token", operations), /mais recente/);
+  await assert.rejects(api.upload("token", operations), /não confirmou/);
+});
+
+test("respeita limite de 100 operações por requisição", async (t) => {
+  const operations = Array.from({ length: 101 }, (_, index) => ({ id: index + 1 }));
+  const requests = mockResponses(t, [
+    { body: { resultados: operations.slice(0, 100).map((item) => ({ ...item, status: "ok" })) } },
+    { body: { resultados: [{ id: 101, status: "ok" }] } },
+  ]);
+  await createApiClient("http://api").upload("token", operations);
+  assert.equal(JSON.parse(requests[0].options.body).operacoes.length, 100);
+  assert.equal(JSON.parse(requests[1].options.body).operacoes.length, 1);
+});
+
+test("cronograma usa operações ordenadas e preserva histórico", () => {
+  const operations = createScheduleOperations(tracks[0], { id: "antigo" });
+  assert.equal(operations[0].entidade_id, "antigo");
+  assert.deepEqual(operations[0].payload.ativo, 0);
+  assert.equal(operations[1].entidade, "cronograma");
+  assert.equal(operations[1].payload.trilha_id, "trilha-dev");
+  const steps = operations.filter((item) => item.entidade === "etapa_estudo");
+  assert.equal(steps.length, 7);
+  assert.equal(new Set(steps.map((item) => item.entidade_id)).size, 7);
+  assert.ok(
+    steps.every(
+      (item) =>
+        item.payload.duracao_min <= 120 && item.payload.cronograma_id === operations[1].entidade_id,
+    ),
+  );
+  assert.equal(steps[0].payload.data, localDate());
+  assert.ok(operations.every((item) => item.operacao !== "delete"));
+});
+
+test("mapeia etapas reais e calcula estatísticas sem valores de demonstração", () => {
+  const now = new Date().toISOString();
+  const blocks = mapBlocks(
+    [
+      {
+        id: "cron-1",
+        etapas: [
+          {
+            id: "e-1",
+            materia_id: "mat-db",
+            data: localDate(),
+            duracao_min: 90,
+            pausa_min: 15,
+            concluida: 1,
+            concluida_em: now,
+          },
+          {
+            id: "e-2",
+            materia_id: "mat-db",
+            data: localDate(),
+            duracao_min: 60,
+            pausa_min: 15,
+            concluida: 0,
+            concluida_em: null,
+          },
+        ],
+      },
+    ],
+    tracks,
+  );
+  assert.equal(blocks[0].title, "Banco de dados");
+  assert.equal(blocks[0].startTime, "");
+  assert.equal(stats.getStudyHours("week", blocks), 1.5);
+  assert.equal(stats.getSubjectHours("week", blocks)[0].hours, 1.5);
+  assert.equal(stats.getStudyHours("month", []), 0);
+  assert.equal(stats.getAccuracy([]).percent, 0);
+  const answers = [
+    { correct: true, answeredAt: now },
+    { correct: false, answeredAt: "2000-01-01T12:00:00Z" },
+  ];
+  assert.equal(stats.getQuestionsSolved("week", answers), 1);
+  assert.equal(stats.getAccuracy(stats.filterAnswers(answers, "week")).percent, 100);
+});
+
+test("revisão pendente usa somente a tentativa mais recente da questão", () => {
+  const question = mapQuestion(rawQuestion, tracks);
+  const attempt = mapAttempt(
+    {
+      id: "t-1",
+      questao_id: question.id,
+      acertou: 1,
+      respondida_em: "2026-01-01T12:00:00Z",
+      dificuldade_informada: 5,
+      proxima_revisao: "2026-01-02",
+    },
+    [question],
+  );
+  assert.equal(attempt.theme, "SQL");
+  assert.equal(attempt.difficulty, "easy");
+  assert.equal(stats.getPendingReviewCount([attempt]), 1);
+  assert.equal(
+    stats.getPendingReviewCount([
+      attempt,
+      { ...attempt, id: "t-2", answeredAt: "2026-02-01T12:00:00Z", nextReview: "2099-01-01" },
+    ]),
+    0,
+  );
+});
+
+test("calendário preserva data completa na mudança do mês", () => {
+  const week = getWeekDays(new Date(2026, 10, 30), [{ date: "2026-12-01" }]);
+  assert.equal(week[0].date, "2026-11-30");
+  assert.equal(week[1].date, "2026-12-01");
+  assert.equal(week[1].hasStudy, true);
+  assert.equal(week[0].hasStudy, false);
+});
+
+async function listen(server) {
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  return "http://127.0.0.1:" + server.address().port;
+}
+test("proxy valida origem e encaminha JSON e autorização sem abrir sockets", async (t) => {
+  t.mock.method(http, "request", (url, options, callback) => {
+    const outgoing = new PassThrough();
+    outgoing.setTimeout = () => outgoing;
+    let body = "";
+    outgoing.on("data", (chunk) => (body += chunk));
+    outgoing.on("finish", () => {
+      const response = Readable.from([
+        JSON.stringify({
+          path: url.pathname + url.search,
+          method: options.method,
+          authorization: options.headers.authorization,
+          body: JSON.parse(body),
+        }),
+      ]);
+      response.statusCode = 200;
+      response.headers = { "content-type": "application/json" };
+      callback(response);
+    });
+    return outgoing;
+  });
+  const proxy = createProxy("http://api.example");
+  function invoke(method, origin, body = "") {
+    return new Promise((resolve) => {
+      const req = new PassThrough();
+      req.method = method;
+      req.url = "/conta?teste=1";
+      req.headers = { origin, authorization: "Bearer session", "content-type": "application/json" };
+      let output = "";
+      const res = new Writable({
+        write(chunk, encoding, done) {
+          output += chunk;
+          done();
+        },
+      });
+      const headers = {};
+      res.setHeader = (name, value) => {
+        headers[name] = value;
+      };
+      res.writeHead = (status) => {
+        res.statusCode = status;
+      };
+      res.on("finish", () => resolve({ status: res.statusCode, headers, output }));
+      proxy.emit("request", req, res);
+      req.end(body);
+    });
+  }
+  const options = await invoke("OPTIONS", "http://localhost:8081");
+  assert.equal(options.status, 204);
+  assert.equal(options.headers["Access-Control-Allow-Origin"], "http://localhost:8081");
+  const response = await invoke(
+    "PATCH",
+    "http://localhost:8081",
+    JSON.stringify({ nome: "Pessoa" }),
+  );
+  assert.deepEqual(JSON.parse(response.output), {
+    path: "/conta?teste=1",
+    method: "PATCH",
+    authorization: "Bearer session",
+    body: { nome: "Pessoa" },
+  });
+  assert.equal((await invoke("GET", "https://outro-site.example")).status, 403);
+});
+
+test(
+  "proxy HTTP com sockets reais (RUN_HTTP_TESTS=1)",
+  { skip: process.env.RUN_HTTP_TESTS !== "1" },
+  async (t) => {
+    const upstream = http.createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            path: req.url,
+            method: req.method,
+            authorization: req.headers.authorization,
+            body: JSON.parse(body || "{}"),
+          }),
+        );
+      });
+    });
+    const target = await listen(upstream);
+    const proxy = createProxy(target);
+    const url = await listen(proxy);
+    t.after(() => {
+      proxy.closeAllConnections();
+      upstream.closeAllConnections();
+      proxy.close();
+      upstream.close();
+    });
+    const preflight = await fetch(url + "/conta", {
+      method: "OPTIONS",
+      headers: { Origin: "http://localhost:8081" },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), "http://localhost:8081");
+    const result = await createApiClient(url).request("/conta?teste=1", "session", "PATCH", {
+      nome: "Pessoa",
+    });
+    assert.equal(result.authorization, "Bearer session");
+    assert.equal(result.method, "PATCH");
+    assert.equal(result.path, "/conta?teste=1");
+    assert.deepEqual(result.body, { nome: "Pessoa" });
+    assert.equal(
+      (await fetch(url + "/conta", { headers: { Origin: "https://outro-site.example" } })).status,
+      403,
+    );
+  },
+);

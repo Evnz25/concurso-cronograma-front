@@ -1,7 +1,7 @@
 import type { IconName } from "./Icon";
 
 /** Trilhas de estudo disponíveis (RF05). */
-export type TrackId = "development" | "infrastructure" | "data" | "security" | "governance";
+export type TrackId = string;
 
 export interface Track {
   id: TrackId;

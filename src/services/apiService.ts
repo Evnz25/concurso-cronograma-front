@@ -1,0 +1,128 @@
+import type {
+  ApiExam,
+  ApiQuestion,
+  ApiTrack,
+  AuthResponse,
+  SyncOperation,
+  SyncResponse,
+} from "../interfaces/Api";
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status = 0,
+  ) {
+    super(message);
+  }
+}
+
+export function createApiClient(baseUrl: string) {
+  async function request<T>(
+    path: string,
+    token?: string,
+    method = "GET",
+    body?: unknown,
+  ): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
+        method,
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new ApiError(
+          "A API não retornou JSON válido. Confira o endereço do servidor.",
+          response.status,
+        );
+      }
+      if (!response.ok)
+        throw new ApiError(data.erro || `Erro HTTP ${response.status}.`, response.status);
+      return data as T;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(
+        "Não foi possível acessar a API. Confira a conexão e o endereço do servidor e tente novamente.",
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  return {
+    request,
+    authenticate: (mode: "login" | "cadastro", email: string, senha: string, nome?: string) =>
+      request<AuthResponse>(`/auth/${mode}`, undefined, "POST", {
+        email,
+        senha,
+        ...(nome === undefined ? {} : { nome }),
+      }),
+    tracks: async () => (await request<{ trilhas: ApiTrack[] }>("/catalogo/trilhas")).trilhas,
+    exams: async () => (await request<{ concursos: ApiExam[] }>("/catalogo/concursos")).concursos,
+    async questions(trackId: string) {
+      const result: ApiQuestion[] = [];
+      for (let pagina = 1; ; pagina++) {
+        const page = await request<{ total: number; questoes: ApiQuestion[] }>(
+          `/catalogo/questoes?trilhaId=${encodeURIComponent(trackId)}&pagina=${pagina}&limite=500`,
+        );
+        result.push(...page.questoes);
+        if (result.length >= page.total) return result;
+        if (!page.questoes.length)
+          throw new ApiError("A paginação de questões não avançou. Tente atualizar os dados.");
+      }
+    },
+    async download(token: string): Promise<SyncResponse> {
+      const schedules = new Map<string, SyncResponse["cronogramas"][number]>();
+      const attempts = new Map<string, SyncResponse["tentativas"][number]>();
+      let cursor = "";
+      for (;;) {
+        const page = await request<SyncResponse>(
+          `/sync?limite=500${cursor ? `&desde=${encodeURIComponent(cursor)}` : ""}`,
+          token,
+        );
+        page.cronogramas.forEach((item) => schedules.set(item.id, item));
+        page.tentativas.forEach((item) => attempts.set(item.id, item));
+        if (!page.tem_mais)
+          return {
+            ...page,
+            cronogramas: [...schedules.values()],
+            tentativas: [...attempts.values()],
+          };
+        if (!page.proximo_desde || page.proximo_desde === cursor) {
+          throw new ApiError(
+            "A paginação do histórico não avançou. A API precisa de um cursor adicional para registros com a mesma data.",
+          );
+        }
+        cursor = page.proximo_desde;
+      }
+    },
+    async upload(token: string, operations: SyncOperation[]) {
+      // Envio sequencial: uma etapa só pode ser criada depois do cronograma.
+      for (let start = 0; start < operations.length; start += 100) {
+        const batch = operations.slice(start, start + 100);
+        const response = await request<{
+          resultados: { id: number; status: string; motivo?: string; ignorada?: boolean }[];
+        }>("/sync", token, "POST", { operacoes: batch });
+        for (const operation of batch) {
+          const result = response.resultados.find((item) => item.id === operation.id);
+          if (!result || result.status !== "ok")
+            throw new ApiError(result?.motivo || "A API não confirmou a alteração.");
+          if (result.ignorada)
+            throw new ApiError(
+              "Há uma alteração mais recente no servidor. Atualize os dados antes de tentar novamente.",
+            );
+        }
+      }
+    },
+  };
+}

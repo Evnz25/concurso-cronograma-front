@@ -5,7 +5,6 @@ import type {
   Question,
   QuestionSession,
 } from "@/interfaces";
-import { QUESTIONS } from "./mocks/data";
 
 /** Opções de avaliação de dificuldade e seus intervalos de revisão SRS (RF09). */
 export const DIFFICULTY_OPTIONS: DifficultyOption[] = [
@@ -38,10 +37,6 @@ export const INITIAL_SESSION: QuestionSession = {
   revealed: false,
   rating: null,
 };
-
-export function getQuestions(): Question[] {
-  return QUESTIONS;
-}
 
 export function getDifficultyOption(value: Difficulty): DifficultyOption {
   return DIFFICULTY_OPTIONS.find((option) => option.value === value) ?? DIFFICULTY_OPTIONS[1];

@@ -3,6 +3,11 @@ import type { ColorTone, IconName } from "./Icon";
 /** Bloco de estudo diário do cronograma (RNF02: no máximo 2h por matéria). */
 export interface StudyBlock {
   id: string;
+  date?: string;
+  completedAt?: string | null;
+  completed?: boolean;
+  subjectId?: string;
+  scheduleId?: string;
   title: string;
   topic: string;
   /** Horário de início no formato HH:mm. */
@@ -23,6 +28,7 @@ export interface StudyBreak {
 }
 
 export interface WeekDay {
+  date?: string;
   label: string;
   day: number;
   isPast: boolean;

@@ -23,6 +23,7 @@ export function HoursBarChart({ data, axis, maxHours, periodLabel }: HoursBarCha
         <Badge tone="neutral">{periodLabel}</Badge>
       </View>
 
+      {!data.length && <AppText variant="caption">Nenhum estudo concluído neste período.</AppText>}
       <View style={styles.chartWrapper}>
         {/* Y Axis */}
         <View style={styles.axis}>
@@ -35,12 +36,12 @@ export function HoursBarChart({ data, axis, maxHours, periodLabel }: HoursBarCha
 
         {/* Columns */}
         <View style={styles.columns}>
-          {data.map((item) => {
+          {data.map((item, index) => {
             const barHeight = Math.max(8, (item.hours / maxHours) * 100);
             const barColor = chartColors[item.color] ?? colors.primary;
 
             return (
-              <View key={item.title} style={styles.column}>
+              <View key={index} style={styles.column}>
                 <View style={styles.barTrack}>
                   <View
                     style={[
@@ -51,7 +52,7 @@ export function HoursBarChart({ data, axis, maxHours, periodLabel }: HoursBarCha
                       },
                     ]}
                   >
-                    <AppText style={styles.barValue}>{item.hours}h</AppText>
+                    <AppText style={styles.barValue}>{Number(item.hours.toFixed(1))}h</AppText>
                   </View>
                 </View>
                 <AppText variant="caption" numberOfLines={1} style={styles.colTitle}>
