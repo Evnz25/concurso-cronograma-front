@@ -138,6 +138,10 @@ function useAppState() {
     (block) => activeSchedule?.trilha_id === trackId && block.scheduleId === activeSchedule.id,
   );
   const today = useLocalDay();
+  const nextWeek =
+    activeSchedule &&
+    new Date(Date.parse(activeSchedule.data_inicio) + 7 * 86400000).toISOString().slice(0, 10);
+  const checkedWeek = useRef("");
   const blocks = scheduleBlocks.filter((block) => block.date === today);
   const completedIds = blocks.filter((block) => block.completed).map((block) => block.id);
   const trackQuestions = useMemo(
@@ -261,7 +265,7 @@ function useAppState() {
     const [rawTracks, rawExams, sync, agenda] = await Promise.all([
       api.tracks(),
       api.exams(),
-      api.download(current.token),
+      api.downloadCurrentWeek(current.token),
       api.reviews(current.token),
     ]);
     if (sync.usuario.id !== current.userId)
@@ -334,6 +338,24 @@ function useAppState() {
     run(async () => {
       if (credentialRef.current) await load(credentialRef.current);
     });
+
+  useEffect(() => {
+    if (!credentials || !activeSchedule || !nextWeek || today < nextWeek || busy || locked.current)
+      return;
+    const key = `${activeSchedule.id}:${today}`;
+    if (checkedWeek.current === key) return;
+    checkedWeek.current = key;
+    void run(async () => {
+      const sync = await api.downloadCurrentWeek(credentials.token);
+      const agenda = await api.reviews(credentials.token);
+      setData((old) => ({ ...old, sync, agenda }));
+      const track = sync.cronogramas.find((c) => c.ativo)?.trilha_id;
+      if (track && track !== trackId) {
+        setTrackId(track);
+        resetQuestions();
+      }
+    });
+  }, [today, busy, credentials, activeSchedule?.id, nextWeek]);
   const logout = () =>
     run(async () => {
       await AsyncStorage.removeItem(STORAGE_KEY);
@@ -559,9 +581,12 @@ function useAppState() {
   return {
     user,
     tracks,
+    rawTracks: catalog,
     exams: data.exams,
     allBlocks,
     scheduleBlocks,
+    activeSchedule,
+    nextWeek,
     blocks,
     completedIds,
     answers,

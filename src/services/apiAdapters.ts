@@ -2,11 +2,20 @@ import type { AnswerRecord, Exam, Question, StudyBlock, Track } from "../interfa
 import type { ApiAttempt, ApiExam, ApiQuestion, ApiSchedule, ApiTrack } from "../interfaces/Api";
 import type { IconName } from "../interfaces/Icon";
 
-function getTrackIcon(id: string, name: string): IconName {
+export function getSubjectIcon(id: string, name: string): IconName {
   const norm = `${id} ${name}`.toLowerCase();
-  if (norm.includes("dev") || norm.includes("software") || norm.includes("program")) return "code";
+  if (
+    norm.includes("dev") ||
+    norm.includes("software") ||
+    norm.includes("program") ||
+    norm.includes("lógica") ||
+    norm.includes("logica") ||
+    norm.includes("algoritm")
+  )
+    return "code";
   if (norm.includes("rede") || norm.includes("infra")) return "server";
-  if (norm.includes("dado") || norm.includes("data") || norm.includes("bd")) return "database";
+  if (norm.includes("dado") || norm.includes("data") || norm.includes("bd") || norm.includes("sql"))
+    return "database";
   if (norm.includes("seg") || norm.includes("shield")) return "shield";
   if (norm.includes("gov") || norm.includes("gest") || norm.includes("briefcase"))
     return "briefcase";
@@ -30,7 +39,7 @@ export function mapTrack(track: ApiTrack): Track {
     name: track.nome,
     shortName: track.nome.split("/")[0].trim(),
     detail: getTrackDetail(track),
-    icon: getTrackIcon(track._id, track.nome),
+    icon: getSubjectIcon(track._id, track.nome),
   };
 }
 export function mapQuestion(question: ApiQuestion, tracks: ApiTrack[]): Question {
@@ -79,25 +88,33 @@ export function mapExam(exam: ApiExam, tracks: ApiTrack[]): Exam {
   };
 }
 export function mapBlocks(schedules: ApiSchedule[], tracks: ApiTrack[]): StudyBlock[] {
-  const subjects = tracks.flatMap((track) => track.materias);
-  return schedules.flatMap((schedule) =>
-    schedule.etapas.map((step) => ({
+  return schedules.flatMap((schedule) => {
+    const subjects = tracks.find((track) => track._id === schedule.trilha_id)?.materias ?? [];
+    const weights = new Map(schedule.pesos.map((item) => [item.materia_id, item.peso]));
+    const minutes = new Map<string, number>();
+    for (const step of schedule.etapas) {
+      minutes.set(step.materia_id, (minutes.get(step.materia_id) ?? 0) + step.duracao_min);
+    }
+    return schedule.etapas.map((step) => ({
       id: step.id,
       scheduleId: schedule.id,
       subjectId: step.materia_id,
+      subjectWeight: weights.get(step.materia_id),
+      weeklyMinutes: minutes.get(step.materia_id),
       date: step.data,
       completed: step.concluida === 1,
       completedAt: step.concluida_em,
       title: subjects.find((subject) => subject._id === step.materia_id)?.nome || step.materia_id,
-      topic: `Pausa após a sessão: ${step.pausa_min} min`,
+      topic: "",
+      breakAfterMinutes: step.pausa_min,
       startTime: "",
       durationMinutes: step.duracao_min,
       icon: "book" as const,
       color: "purple" as const,
       tag: "Estudo",
       isSrsReview: false,
-    })),
-  );
+    }));
+  });
 }
 export function mapAttempt(attempt: ApiAttempt, questions: Question[]): AnswerRecord {
   const question = questions.find((item) => item.id === attempt.questao_id);

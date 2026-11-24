@@ -24,7 +24,7 @@ export function CycleSummaryCard({
         Aprenda mais de verdade.
       </p>
       <SummaryRow label="Tempo máximo por matéria" value={`${maxHoursPerSubject} horas`} />
-      <SummaryRow label="Pausa entre sessões" value={`${breakMinutes} min`} />
+      <SummaryRow label="Pausa após 2 horas de estudo" value={`${breakMinutes} min`} />
       <SummaryRow label="Próxima revisão SRS" value={nextReviewLabel} />
       <div className="purple-info">
         <Icon name="target" size={18} /> Priorizamos os temas que você precisa reforçar, sem deixar

@@ -31,3 +31,14 @@ export interface AccuracySummary {
   total: number;
   percent: number;
 }
+
+/** Peso atual de uma matéria no ciclo ativo para distribuir o tempo de estudo. */
+export interface SubjectWeight {
+  subjectId: string;
+  title: string;
+  weight: number;
+  sharePercent: number;
+  weeklyMinutes: number;
+  icon: IconName;
+  color: ColorTone;
+}

@@ -63,7 +63,7 @@ No Android Emulator, use `http://10.0.2.2:3000`. No simulador iOS com a API no m
 | Concluir estudo e salvar resposta | `POST /sync`, conferindo o resultado de cada operação |
 
 - A sessão JWT fica no AsyncStorage; senhas não são persistidas. Um HTTP 401 em uma operação autenticada encerra a sessão. A troca de senha armazena o novo token retornado pela API.
-- O app solicita cada ciclo pela rota autenticada `POST /estudo/ciclos` e exibe as etapas retornadas. Cada ciclo tem sete sessões de 60 minutos com pausa de 15 minutos. Cada matéria aparece uma vez por rodada. Ao criar o ciclo, o gerador escolhe, entre as matérias que faltam na rodada, a que tem mais questões para revisar naquele dia. Empates seguem a ordem da trilha.
+- O cadastro cria o primeiro ciclo na API. Ao entrar, o app carrega o ciclo ativo da conta. O calendário mostra quatro blocos de uma hora por dia, com um intervalo de 15 minutos entre o segundo e o terceiro bloco. A API distribui os 28 blocos da semana conforme os pesos, com até dois blocos da mesma matéria por dia. Trilhas com matéria única usam os quatro blocos para ela. Cada bloco exibe o peso, a duração e os minutos da matéria no ciclo e pode ser concluído separadamente.
 - O app consulta `GET /estudo/agenda` após entrar, atualizar os dados e salvar uma resposta. O calendário combina as etapas do ciclo com as próximas revisões das questões da trilha. Cada resposta salva atualiza a agenda. Questões atrasadas aparecem em **Hoje**, por ordem de vencimento. **Iniciar revisão** abre a fila do dia. As setas do calendário e o atalho **Próxima revisão** permitem consultar datas futuras.
 - Estatísticas de semana/mês usam apenas tentativas e etapas concluídas recebidas da API. As revisões pendentes consideram a tentativa mais recente de cada questão.
 - As etapas mostram a data, a duração e a pausa fornecidas pela API.
@@ -73,6 +73,8 @@ No Android Emulator, use `http://10.0.2.2:3000`. No simulador iOS com a API no m
 ## Repetição espaçada por questão
 
 No cadastro, o estudante escolhe uma trilha do catálogo com matérias disponíveis. Ao criar a conta, a API ativa o primeiro ciclo dessa trilha. Cada matéria recebe peso inicial 1 no cadastro e nas trocas de trilha.
+
+A cada sete dias a API ajusta os pesos a partir das questões distintas respondidas nas semanas encerradas. Ao entrar, atualizar os dados ou chegar ao fim do ciclo com o app aberto, o app solicita a renovação em `POST /estudo/ciclos/atual`. A seção **Distribuição dos 7 dias** mostra o peso e os minutos de cada matéria no cronograma ativo.
 
 A API usa uma adaptação diária do [SM-2 de Piotr Wozniak](https://super-memory.com/english/ol/sm2.htm). Os campos de repetições, intervalo, fator de facilidade e próxima revisão já fazem parte do contrato de sincronização. A tentativa mais recente de cada questão fornece o estado inicial, inclusive para contas antigas. A agenda usa as datas já salvas.
 

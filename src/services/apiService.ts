@@ -118,6 +118,12 @@ export function createApiClient(baseUrl: string) {
       });
     },
     tracks: async () => (await request<{ trilhas: ApiTrack[] }>("/catalogo/trilhas")).trilhas,
+    async downloadCurrentWeek(token: string) {
+      await request("/estudo/ciclos/atual", token, "POST", {
+        deslocamento_utc_min: -new Date().getTimezoneOffset(),
+      });
+      return this.download(token);
+    },
     exams: async () => (await request<{ concursos: ApiExam[] }>("/catalogo/concursos")).concursos,
     async questions(trackId: string) {
       const result: ApiQuestion[] = [];

@@ -7,6 +7,7 @@ import { SegmentedControl } from "@/components/common/SegmentedControl";
 import { AccuracyChart } from "@/components/stats/AccuracyChart";
 import { HoursBarChart } from "@/components/stats/HoursBarChart";
 import { StatBox } from "@/components/stats/StatBox";
+import { SubjectWeightsCard } from "@/components/stats/SubjectWeightsCard";
 import { ThemePerformanceTable } from "@/components/stats/ThemePerformanceTable";
 import { useApp } from "@/context/AppContext";
 import { formatNumber } from "@/services/formatService";
@@ -20,6 +21,7 @@ import {
   getQuestionsSolved,
   getStudyHours,
   getSubjectHours,
+  getSubjectWeights,
   getThemePerformance,
 } from "@/services/statsService";
 import { spacing } from "@/theme";
@@ -30,11 +32,12 @@ const PERIOD_OPTIONS = [
 ];
 
 export function StatsView() {
-  const { answers, allBlocks } = useApp();
+  const { answers, allBlocks, activeSchedule, rawTracks } = useApp();
   const [period, setPeriod] = useState<StatsPeriod>("week");
   const periodAnswers = filterAnswers(answers, period);
   const accuracy = getAccuracy(periodAnswers);
   const subjectHours = getSubjectHours(period, allBlocks);
+  const subjectWeights = getSubjectWeights(activeSchedule, rawTracks);
 
   return (
     <ScreenContainer>
@@ -80,6 +83,8 @@ export function StatsView() {
         maxHours={getChartMaxHours(subjectHours)}
         periodLabel={getPeriodLabel(period)}
       />
+
+      <SubjectWeightsCard rows={subjectWeights} />
 
       <AccuracyChart accuracy={accuracy} ratio={getAccuracyRatio(periodAnswers)} />
 

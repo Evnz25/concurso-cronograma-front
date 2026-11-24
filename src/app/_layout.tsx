@@ -98,9 +98,10 @@ function GlobalModalsAndToast() {
 }
 
 function AppContent() {
-  const { ready, authenticated, isGuest } = useApp();
+  const { ready, authenticated, isGuest, hasData } = useApp();
   if (!ready) return <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />;
   if (!authenticated && !isGuest) return <AuthView />;
+  if (authenticated && !hasData) return <ConnectionStatus />;
   return (
     <>
       <ConnectionStatus />

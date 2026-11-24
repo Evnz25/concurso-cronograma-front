@@ -7,12 +7,15 @@ export interface StudyBlock {
   completedAt?: string | null;
   completed?: boolean;
   subjectId?: string;
+  subjectWeight?: number;
+  weeklyMinutes?: number;
   scheduleId?: string;
   title: string;
   topic: string;
   /** Horário de início no formato HH:mm. */
   startTime: string;
   durationMinutes: number;
+  breakAfterMinutes?: number;
   icon: IconName;
   color: ColorTone;
   tag: string;

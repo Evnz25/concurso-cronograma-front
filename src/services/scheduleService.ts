@@ -24,7 +24,14 @@ export function getBlockEndMinutes(block: StudyBlock): number {
 
 /** Retorna a pausa programada que antecede o bloco no índice informado, se houver. */
 export function getBreakBefore(blocks: StudyBlock[], index: number): StudyBreak | null {
-  if (index <= 0 || !blocks[index]?.startTime || !blocks[index - 1]?.startTime) return null;
+  const current = blocks[index];
+  const previous = blocks[index - 1];
+  if (!current || !previous || current.date !== previous.date) return null;
+  if (!current.startTime || !previous.startTime) {
+    return previous.breakAfterMinutes
+      ? { startTime: "", endTime: "", durationMinutes: previous.breakAfterMinutes }
+      : null;
+  }
   const previousEnd = getBlockEndMinutes(blocks[index - 1]);
   const currentStart = timeToMinutes(blocks[index].startTime);
   const gap = currentStart - previousEnd;
@@ -107,8 +114,8 @@ export function getDayPlan(day: WeekDay, blocks: StudyBlock[], completedCount: n
       formatDuration(getPlannedMinutes(blocks)) +
       " de foco · " +
       blocks.length +
-      " blocos de estudo",
-    badge: completedCount + " de " + blocks.length + " concluídos",
+      (blocks.length === 1 ? " bloco de estudo" : " blocos de estudo"),
+    badge: completedCount + " de " + blocks.length + (blocks.length === 1 ? " concluído" : " concluídos"),
     emptyTitle: "Sem estudos agendados nesta data",
     emptyDescription: "Você pode iniciar um novo cronograma no perfil.",
   };

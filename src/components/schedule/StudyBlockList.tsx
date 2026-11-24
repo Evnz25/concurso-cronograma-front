@@ -36,7 +36,7 @@ export function StudyBlockList({
               <View style={styles.breakLine}>
                 <Icon name="coffee" size={14} color="#aaa08d" />
                 <AppText style={styles.breakText}>
-                  {pause.startTime} – {pause.endTime} · Pausa{" "}
+                  {pause.startTime && `${pause.startTime} – ${pause.endTime} · `}Intervalo{" "}
                   <AppText style={styles.breakDuration}>
                     ({formatDuration(pause.durationMinutes)})
                   </AppText>
@@ -49,7 +49,7 @@ export function StudyBlockList({
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: done, disabled: busy }}
                 disabled={busy}
-                accessibilityLabel={`Concluir ${block.title}`}
+                accessibilityLabel={`Bloco ${index + 1}, ${block.title}, ${duration}`}
                 onPress={() => onToggle(block.id)}
                 style={[styles.checkbox, done && styles.checkboxChecked]}
               >
@@ -66,9 +66,17 @@ export function StudyBlockList({
                 >
                   {block.title}
                 </AppText>
-                <AppText variant="caption" numberOfLines={1}>
-                  {compact ? duration : block.topic}
-                </AppText>
+                {!compact && block.subjectWeight != null && (
+                  <AppText variant="caption">
+                    Peso {block.subjectWeight.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                    {" · "}{block.weeklyMinutes} min no ciclo
+                  </AppText>
+                )}
+                {(compact || !!block.topic) && (
+                  <AppText variant="caption" numberOfLines={1}>
+                    {compact ? duration : block.topic}
+                  </AppText>
+                )}
               </View>
 
               <View style={styles.meta}>

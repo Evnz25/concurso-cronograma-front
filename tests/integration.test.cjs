@@ -10,7 +10,9 @@ const { mapTrack, mapQuestion, mapExam, mapBlocks, mapAttempt } = loadTs(
 const stats = loadTs("src/services/statsService.ts");
 const { localDate } = loadTs("src/services/formatService.ts");
 const { filterExams } = loadTs("src/services/examService.ts");
-const { getWeekDays } = loadTs("src/services/scheduleService.ts");
+const { getWeekDays, getBreakBefore, getPlannedMinutes } = loadTs(
+  "src/services/scheduleService.ts",
+);
 const { createProxy } = require("../scripts/api-proxy.cjs");
 
 // Formatos reais das rotas catalogo.js e sync.js, incluindo IDs não conhecidos pelo protótipo.
@@ -101,6 +103,85 @@ test("sync deduplica borda inclusiva e preserva cronogramas das páginas anterio
   const result = await createApiClient("http://api").download("token");
   assert.equal(result.tentativas.length, 2);
   assert.equal(result.cronogramas.length, 1);
+});
+
+test("renova a semana antes de mostrar os pesos e blocos persistidos", async (t) => {
+  const ciclo = {
+    id: "semana-2",
+    ativo: 1,
+    trilha_id: "ti",
+    pesos: [
+      { materia_id: "redes", peso: 2 },
+      { materia_id: "dados", peso: 1 },
+    ],
+    etapas: [
+      {
+        id: "e1",
+        materia_id: "redes",
+        data: "2026-11-24",
+        duracao_min: 60,
+        pausa_min: 0,
+        concluida: 1,
+      },
+      {
+        id: "e2",
+        materia_id: "dados",
+        data: "2026-11-24",
+        duracao_min: 60,
+        pausa_min: 15,
+        concluida: 0,
+      },
+      {
+        id: "e3",
+        materia_id: "redes",
+        data: "2026-11-24",
+        duracao_min: 60,
+        pausa_min: 0,
+        concluida: 0,
+      },
+      {
+        id: "e4",
+        materia_id: "dados",
+        data: "2026-11-24",
+        duracao_min: 60,
+        pausa_min: 0,
+        concluida: 0,
+      },
+    ],
+  };
+  const requests = mockResponses(t, [
+    { body: { ok: true } },
+    { body: { ...basePage, cronogramas: [ciclo] } },
+  ]);
+  const sync = await createApiClient("http://api").downloadCurrentWeek("sessao");
+  assert.deepEqual(sync.cronogramas, [ciclo]);
+  const blocos = mapBlocks(sync.cronogramas, [
+    {
+      _id: "ti",
+      materias: [
+        { _id: "redes", nome: "Redes" },
+        { _id: "dados", nome: "Banco de Dados" },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    blocos.map((b) => [b.id, b.title, b.durationMinutes, b.subjectWeight, b.completed]),
+    [
+      ["e1", "Redes", 60, 2, true],
+      ["e2", "Banco de Dados", 60, 1, false],
+      ["e3", "Redes", 60, 2, false],
+      ["e4", "Banco de Dados", 60, 1, false],
+    ],
+  );
+  assert.equal(getPlannedMinutes(blocos), 240);
+  assert.deepEqual(
+    blocos.map((_, i) => getBreakBefore(blocos, i)?.durationMinutes ?? 0),
+    [0, 0, 15, 0],
+  );
+  assert.equal(requests[0].url, "http://api/estudo/ciclos/atual");
+  assert.equal(requests[0].options.method, "POST");
+  assert.equal(requests[0].options.headers.Authorization, "Bearer sessao");
+  assert.match(requests[1].url, /\/sync\?/);
 });
 
 test("interrompe paginação sem progresso em vez de travar a interface", async (t) => {
@@ -231,6 +312,8 @@ test("mapeia etapas reais e calcula estatísticas sem valores de demonstração"
     [
       {
         id: "cron-1",
+        trilha_id: "trilha-dev",
+        pesos: [{ materia_id: "mat-db", peso: 1.2 }],
         etapas: [
           {
             id: "e-1",
@@ -256,6 +339,8 @@ test("mapeia etapas reais e calcula estatísticas sem valores de demonstração"
     tracks,
   );
   assert.equal(blocks[0].title, "Banco de dados");
+  assert.equal(blocks[0].subjectWeight, 1.2);
+  assert.equal(blocks[0].weeklyMinutes, 150);
   assert.equal(blocks[0].startTime, "");
   assert.equal(stats.getStudyHours("week", blocks), 1.5);
   assert.equal(stats.getSubjectHours("week", blocks)[0].hours, 1.5);
@@ -267,6 +352,75 @@ test("mapeia etapas reais e calcula estatísticas sem valores de demonstração"
   ];
   assert.equal(stats.getQuestionsSolved("week", answers), 1);
   assert.equal(stats.getAccuracy(stats.filterAnswers(answers, "week")).percent, 100);
+});
+
+test("calcula pesos atuais das matérias ordenados por prioridade e carga do ciclo", () => {
+  assert.deepEqual(stats.getSubjectWeights(undefined, tracks), []);
+  const catalog = [
+    {
+      _id: "trilha-dev",
+      nome: "Desenvolvimento",
+      materias: [
+        { _id: "mat-db", nome: "Banco de Dados", temas: [] },
+        { _id: "mat-logica", nome: "Lógica de Programação", temas: [] },
+        { _id: "mat-gov", nome: "Governança de TI", temas: [] },
+      ],
+    },
+  ];
+  const schedule = {
+    id: "cron-1",
+    trilha_id: "trilha-dev",
+    pesos: [
+      { materia_id: "mat-gov", peso: 0.8 },
+      { materia_id: "mat-db", peso: 1.6 },
+      { materia_id: "mat-logica", peso: 1.0 },
+    ],
+    etapas: [
+      { id: "e-1", materia_id: "mat-db", duracao_min: 120 },
+      { id: "e-2", materia_id: "mat-db", duracao_min: 60 },
+      { id: "e-3", materia_id: "mat-logica", duracao_min: 120 },
+    ],
+  };
+  const weights = stats.getSubjectWeights(schedule, catalog);
+  assert.deepEqual(
+    weights.map((row) => ({
+      subjectId: row.subjectId,
+      title: row.title,
+      weight: row.weight,
+      sharePercent: row.sharePercent,
+      weeklyMinutes: row.weeklyMinutes,
+      icon: row.icon,
+    })),
+    [
+      {
+        subjectId: "mat-db",
+        title: "Banco de Dados",
+        weight: 1.6,
+        sharePercent: 47,
+        weeklyMinutes: 180,
+        icon: "database",
+      },
+      {
+        subjectId: "mat-logica",
+        title: "Lógica de Programação",
+        weight: 1,
+        sharePercent: 29,
+        weeklyMinutes: 120,
+        icon: "code",
+      },
+      {
+        subjectId: "mat-gov",
+        title: "Governança de TI",
+        weight: 0.8,
+        sharePercent: 24,
+        weeklyMinutes: 0,
+        icon: "briefcase",
+      },
+    ],
+  );
+  assert.equal(stats.getWeightTone(1.6), "orange");
+  assert.equal(stats.getWeightTone(1), "purple");
+  assert.equal(stats.getWeightTone(0.8), "green");
 });
 
 test("revisão pendente usa somente a tentativa mais recente da questão", () => {

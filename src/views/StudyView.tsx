@@ -18,7 +18,15 @@ import { spacing } from "@/theme";
 
 export function StudyView() {
   const router = useRouter();
-  const { scheduleBlocks, toggleBlock, today, reviews, startReview, busy } = useApp();
+  const {
+    scheduleBlocks,
+    nextWeek,
+    toggleBlock,
+    today,
+    reviews,
+    startReview,
+    busy,
+  } = useApp();
   const [selection, setSelection] = useState<string | null>(null);
   const selectedDate = selection ?? today;
   const reference = new Date(selectedDate + "T12:00:00");
@@ -27,6 +35,10 @@ export function StudyView() {
   const blocks = scheduleBlocks.filter((block) => block.date === selectedDate);
   const completedIds = blocks.filter((block) => block.completed).map((block) => block.id);
   const plan = getDayPlan(selectedWeekDay, blocks, completedIds.length);
+  if (nextWeek && selectedDate >= nextWeek) {
+    plan.emptyDescription =
+      "O plano desta semana será calculado quando ela começar, com base nas questões respondidas nas semanas anteriores.";
+  }
   const dayReviews = reviews.get(selectedDate) ?? [];
   const themes = new Map<string, number>();
   for (const { question } of dayReviews) {

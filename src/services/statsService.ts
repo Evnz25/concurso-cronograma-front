@@ -6,9 +6,14 @@ import type {
   StatsPeriod,
   StudyBlock,
   SubjectHours,
+  SubjectWeight,
   ThemePerformanceRow,
 } from "@/interfaces";
+import type { ApiSchedule, ApiTrack } from "@/interfaces/Api";
+import { getSubjectIcon } from "./apiAdapters";
 import { getStartOfWeek, localDate } from "./formatService";
+
+const SUBJECT_TONES: ColorTone[] = ["purple", "blue", "mint", "orange", "lavender", "green"];
 
 function inPeriod(date: string | null | undefined, period: StatsPeriod): boolean {
   if (!date) return false;
@@ -116,6 +121,51 @@ export function getFocusStreak(answers: AnswerRecord[], blocks: StudyBlock[]): n
 }
 export function getPriorityColor(priority: SrsPriority): ColorTone {
   return priority === "Alta" ? "orange" : priority === "Média" ? "purple" : "green";
+}
+export function getWeightTone(weight: number): ColorTone {
+  if (weight >= 1.15) return "orange";
+  if (weight < 0.95) return "green";
+  return "purple";
+}
+export function getSubjectWeights(
+  schedule: ApiSchedule | undefined,
+  tracks: ApiTrack[],
+): SubjectWeight[] {
+  if (!schedule?.pesos?.length) return [];
+  const trackSubjects = tracks.find((track) => track._id === schedule.trilha_id)?.materias;
+  const fallbackSubjects = tracks.flatMap((track) => track.materias ?? []);
+  const subjectNames = new Map<string, string>(
+    (trackSubjects?.length ? trackSubjects : fallbackSubjects).map((subject) => [
+      subject._id,
+      subject.nome,
+    ]),
+  );
+  const weeklyMinutesBySubject = new Map<string, number>();
+  for (const step of schedule.etapas ?? []) {
+    weeklyMinutesBySubject.set(
+      step.materia_id,
+      (weeklyMinutesBySubject.get(step.materia_id) ?? 0) + step.duracao_min,
+    );
+  }
+  const totalWeight = schedule.pesos.reduce((sum, item) => sum + item.peso, 0);
+  const sorted = [...schedule.pesos].sort((a, b) => {
+    if (b.peso !== a.peso) return b.peso - a.peso;
+    const nameA = subjectNames.get(a.materia_id) || a.materia_id;
+    const nameB = subjectNames.get(b.materia_id) || b.materia_id;
+    return nameA.localeCompare(nameB, "pt-BR");
+  });
+  return sorted.map((item, index) => {
+    const title = subjectNames.get(item.materia_id) || item.materia_id;
+    return {
+      subjectId: item.materia_id,
+      title,
+      weight: item.peso,
+      sharePercent: totalWeight > 0 ? Math.round((item.peso / totalWeight) * 100) : 0,
+      weeklyMinutes: weeklyMinutesBySubject.get(item.materia_id) ?? 0,
+      icon: getSubjectIcon(item.materia_id, title),
+      color: SUBJECT_TONES[index % SUBJECT_TONES.length],
+    };
+  });
 }
 export function getPeriodLabel(period: StatsPeriod): string {
   return period === "week" ? "Nesta semana" : "Neste mês";

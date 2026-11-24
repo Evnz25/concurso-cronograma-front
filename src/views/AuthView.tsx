@@ -72,7 +72,10 @@ export function AuthView() {
                   onSelect={setTrackId}
                   disabled={busy}
                 />
-                <AppText variant="caption">Todas as matérias da trilha começam com peso 1.</AppText>
+                <AppText variant="caption">
+                  Seu plano começa com quatro blocos de 1 hora por dia e uma pausa de 15 minutos após as primeiras 2 horas.
+                  Todas as matérias da trilha começam com peso 1.
+                </AppText>
               </>
             ) : (
               <>
