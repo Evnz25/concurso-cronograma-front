@@ -31,6 +31,7 @@ function GlobalModalsAndToast() {
     activeModal,
     toastMessage,
     pendingReviews,
+    startReview,
     blocks,
     completedIds,
     closeModals,
@@ -60,8 +61,10 @@ function GlobalModalsAndToast() {
           pendingBlocks={blocks.length - completedIds.length}
           onClose={closeModals}
           onStartReview={() => {
-            closeModals();
-            router.push("/questions" as any);
+            if (startReview()) {
+              closeModals();
+              router.push("/questions" as any);
+            }
           }}
         />
       )}

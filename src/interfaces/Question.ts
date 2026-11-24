@@ -4,6 +4,7 @@ import type { IconName } from "./Icon";
 export interface Question {
   id: string;
   trackId?: string;
+  subjectId?: string;
   themeId?: string;
   sourceUrl?: string;
   theme: string;
@@ -33,9 +34,6 @@ export type Difficulty = "hard" | "medium" | "easy";
 export interface DifficultyOption {
   value: Difficulty;
   label: string;
-  reviewLabel: string;
-  /** Intervalo, em dias, até a próxima revisão SRS. */
-  intervalDays: number;
   icon: IconName;
 }
 

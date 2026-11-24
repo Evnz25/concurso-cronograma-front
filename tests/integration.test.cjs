@@ -4,7 +4,7 @@ const http = require("node:http");
 const { PassThrough, Readable, Writable } = require("node:stream");
 const { loadTs } = require("./load-ts.cjs");
 const { createApiClient, ApiError } = loadTs("src/services/apiService.ts");
-const { mapTrack, mapQuestion, mapExam, mapBlocks, mapAttempt, createScheduleOperations } = loadTs(
+const { mapTrack, mapQuestion, mapExam, mapBlocks, mapAttempt } = loadTs(
   "src/services/apiAdapters.ts",
 );
 const stats = loadTs("src/services/statsService.ts");
@@ -164,23 +164,65 @@ test("respeita limite de 100 operações por requisição", async (t) => {
   assert.equal(JSON.parse(requests[1].options.body).operacoes.length, 1);
 });
 
-test("cronograma usa operações ordenadas e preserva histórico", () => {
-  const operations = createScheduleOperations(tracks[0], { id: "antigo" });
-  assert.equal(operations[0].entidade_id, "antigo");
-  assert.deepEqual(operations[0].payload.ativo, 0);
-  assert.equal(operations[1].entidade, "cronograma");
-  assert.equal(operations[1].payload.trilha_id, "trilha-dev");
-  const steps = operations.filter((item) => item.entidade === "etapa_estudo");
-  assert.equal(steps.length, 7);
-  assert.equal(new Set(steps.map((item) => item.entidade_id)).size, 7);
-  assert.ok(
-    steps.every(
-      (item) =>
-        item.payload.duracao_min <= 120 && item.payload.cronograma_id === operations[1].entidade_id,
-    ),
-  );
-  assert.equal(steps[0].payload.data, localDate());
-  assert.ok(operations.every((item) => item.operacao !== "delete"));
+test("cadastro exige a escolha de trilha e login usa apenas as credenciais", async (t) => {
+  const requests = mockResponses(t, [{ body: {} }, { body: {} }]);
+  const client = createApiClient("http://api");
+  await assert.rejects(client.authenticate("cadastro", "a@example.org", "senha-teste"), /trilha/);
+  await client.authenticate("cadastro", "a@example.org", "senha-teste", {
+    name: " Ana ",
+    trackId: "redes",
+  });
+  await client.authenticate("login", "a@example.org", "senha-teste");
+  const cadastro = JSON.parse(requests[0].options.body);
+  assert.equal(cadastro.trilha_id, "redes");
+  assert.equal(cadastro.nome, "Ana");
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    email: "a@example.org",
+    senha: "senha-teste",
+  });
+});
+
+test("envia apenas trilha, fuso e id de reenvio e usa o ciclo devolvido pela API", async (t) => {
+  const cycle = { id: "c1", etapas: [{ id: "e1", materia_id: "m", data: "2027-09-01" }] };
+  const requests = mockResponses(t, [{ body: { cronograma: cycle } }]);
+  const returned = await createApiClient("http://api").createCycle("token", "c1", "ti");
+  assert.deepEqual(returned, cycle);
+  assert.equal(requests[0].url, "http://api/estudo/ciclos");
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    id: "c1",
+    trilha_id: "ti",
+    deslocamento_utc_min: -new Date().getTimezoneOffset() || 0,
+  });
+});
+
+test("usa a prévia e a tentativa confirmada pelo servidor", async (t) => {
+  const saved = { id: "t1", proxima_revisao: "2027-02-15" };
+  const dates = { hard: "2027-02-12", medium: "2027-02-13", easy: "2027-02-14" };
+  const agenda = [{ questao_id: "q", vencimento: saved.proxima_revisao }];
+  const requests = mockResponses(t, [
+    { body: dates },
+    { body: { resultados: [{ status: "ok", tentativa: saved }] } },
+    { body: { revisoes: agenda } },
+    { body: { resultados: [{ status: "rejeitada", motivo: "Questão inválida" }] } },
+  ]);
+  const client = createApiClient("http://api");
+  const input = {
+    id: "t1",
+    questao_id: "q",
+    alternativa: "B",
+    respondida_em: "2027-02-01T12:00:00Z",
+    deslocamento_utc_min: -180,
+  };
+  assert.deepEqual(await client.preview("token", input), dates);
+  assert.deepEqual(await client.saveAnswer("token", input, 5), saved);
+  assert.deepEqual(await client.reviews("token"), agenda);
+  const { id, ...fields } = input;
+  assert.deepEqual(JSON.parse(requests[1].options.body).operacoes[0].payload, {
+    ...fields,
+    dificuldade_informada: 5,
+  });
+  assert.ok(requests.every((r) => r.options.headers.Authorization === "Bearer token"));
+  await assert.rejects(client.saveAnswer("token", input, 5), /Questão inválida/);
 });
 
 test("mapeia etapas reais e calcula estatísticas sem valores de demonstração", () => {

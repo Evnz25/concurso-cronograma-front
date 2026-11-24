@@ -2,6 +2,7 @@ import { useApp } from "@/context/AppContext";
 import { Pressable, StyleSheet, View } from "react-native";
 import type { Difficulty, Question } from "@/interfaces";
 import { getOptionLetter, isCorrectAnswer } from "@/services/questionService";
+import { formatShortDate } from "@/services/formatService";
 import { colors, fonts, radius, spacing } from "@/theme";
 import { AppText } from "../common/AppText";
 import { Badge } from "../common/Badge";
@@ -38,7 +39,7 @@ export function QuestionCard({
   onRate,
   onNext,
 }: QuestionCardProps) {
-  const { busy } = useApp();
+  const { busy, ratingLocked, nextReviewDate } = useApp();
   const correct = isCorrectAnswer(question, selectedOption);
   const progressPercent = (position / total) * 100;
 
@@ -156,11 +157,10 @@ export function QuestionCard({
             </AppText>
           </View>
 
-          <DifficultyRating rating={rating} onRate={onRate} />
-          {!correct && (
+          <DifficultyRating rating={rating} disabled={ratingLocked} onRate={onRate} />
+          {nextReviewDate && (
             <AppText variant="caption">
-              Respostas incorretas serão revisadas amanhã, independentemente da dificuldade
-              escolhida.
+              Próxima revisão no cronograma em {formatShortDate(nextReviewDate)}.
             </AppText>
           )}
 

@@ -1,4 +1,8 @@
 import type {
+  AnswerInput,
+  ApiAttempt,
+  ApiSchedule,
+  ReviewEntry,
   ApiExam,
   ApiQuestion,
   ApiTrack,
@@ -61,12 +65,58 @@ export function createApiClient(baseUrl: string) {
 
   return {
     request,
-    authenticate: (mode: "login" | "cadastro", email: string, senha: string, nome?: string) =>
-      request<AuthResponse>(`/auth/${mode}`, undefined, "POST", {
+    reviews: async (token: string) =>
+      (await request<{ revisoes: ReviewEntry[] }>("/estudo/agenda", token)).revisoes,
+    preview: (token: string, input: AnswerInput) =>
+      request<Record<"hard" | "medium" | "easy", string>>("/estudo/previa", token, "POST", input),
+    createCycle: async (token: string, id: string, trackId: string) =>
+      (
+        await request<{ cronograma: ApiSchedule }>("/estudo/ciclos", token, "POST", {
+          id,
+          trilha_id: trackId,
+          deslocamento_utc_min: -new Date().getTimezoneOffset(),
+        })
+      ).cronograma,
+    async saveAnswer(token: string, input: AnswerInput, difficulty: number) {
+      const { id, ...answer } = input;
+      const response = await request<{
+        resultados: { status: string; tentativa?: ApiAttempt; motivo?: string }[];
+      }>("/sync", token, "POST", {
+        operacoes: [
+          {
+            id: 1,
+            entidade: "tentativa_exercicio",
+            entidade_id: id,
+            operacao: "insert",
+            payload: { ...answer, dificuldade_informada: difficulty },
+          },
+        ],
+      });
+      const result = response.resultados[0];
+      if (result?.status !== "ok" || result.tentativa?.id !== id)
+        throw new ApiError(result?.motivo || "A API não confirmou o agendamento da revisão.");
+      return result.tentativa;
+    },
+    async authenticate(
+      mode: "login" | "cadastro",
+      email: string,
+      senha: string,
+      registration?: { name: string; trackId: string },
+    ) {
+      if (mode === "cadastro" && !registration?.trackId)
+        throw new ApiError("Escolha uma trilha de estudo.");
+      return request<AuthResponse>(`/auth/${mode}`, undefined, "POST", {
         email,
         senha,
-        ...(nome === undefined ? {} : { nome }),
-      }),
+        ...(mode === "cadastro" && registration
+          ? {
+              nome: registration.name.trim(),
+              trilha_id: registration.trackId,
+              deslocamento_utc_min: -new Date().getTimezoneOffset(),
+            }
+          : {}),
+      });
+    },
     tracks: async () => (await request<{ trilhas: ApiTrack[] }>("/catalogo/trilhas")).trilhas,
     exams: async () => (await request<{ concursos: ApiExam[] }>("/catalogo/concursos")).concursos,
     async questions(trackId: string) {

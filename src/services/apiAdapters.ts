@@ -1,13 +1,5 @@
 import type { AnswerRecord, Exam, Question, StudyBlock, Track } from "../interfaces";
-import type {
-  ApiAttempt,
-  ApiExam,
-  ApiQuestion,
-  ApiSchedule,
-  ApiTrack,
-  SyncOperation,
-} from "../interfaces/Api";
-import { localDate } from "./formatService";
+import type { ApiAttempt, ApiExam, ApiQuestion, ApiSchedule, ApiTrack } from "../interfaces/Api";
 import type { IconName } from "../interfaces/Icon";
 
 function getTrackIcon(id: string, name: string): IconName {
@@ -16,7 +8,8 @@ function getTrackIcon(id: string, name: string): IconName {
   if (norm.includes("rede") || norm.includes("infra")) return "server";
   if (norm.includes("dado") || norm.includes("data") || norm.includes("bd")) return "database";
   if (norm.includes("seg") || norm.includes("shield")) return "shield";
-  if (norm.includes("gov") || norm.includes("gest") || norm.includes("briefcase")) return "briefcase";
+  if (norm.includes("gov") || norm.includes("gest") || norm.includes("briefcase"))
+    return "briefcase";
   return "book";
 }
 
@@ -49,6 +42,7 @@ export function mapQuestion(question: ApiQuestion, tracks: ApiTrack[]): Question
   return {
     id: question._id,
     trackId: track?._id,
+    subjectId: question.materiaId,
     themeId: question.temaId,
     theme: theme?.nome || question.temaId,
     topic: subject?.nome || question.materiaId,
@@ -130,50 +124,4 @@ export function mapAttempt(attempt: ApiAttempt, questions: Question[]): AnswerRe
 // Gerado uma vez por operação e reutilizado ao tentar o envio novamente.
 export function newId(): string {
   return `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-}
-/** Ciclo inicial de sete dias, uma matéria por dia, com sessões de 60 minutos. */
-export function createScheduleOperations(track: ApiTrack, active?: ApiSchedule): SyncOperation[] {
-  const id = newId();
-  const updated = new Date().toISOString();
-  const operations: Omit<SyncOperation, "id">[] = [];
-  if (active)
-    operations.push({
-      entidade: "cronograma",
-      entidade_id: active.id,
-      operacao: "update",
-      payload: { ativo: 0, atualizado_em: updated },
-    });
-  operations.push({
-    entidade: "cronograma",
-    entidade_id: id,
-    operacao: "insert",
-    payload: { trilha_id: track._id, data_inicio: localDate(), ativo: 1, atualizado_em: updated },
-  });
-  track.materias.forEach((subject) =>
-    operations.push({
-      entidade: "peso_materia",
-      entidade_id: `${id}:${subject._id}`,
-      operacao: "insert",
-      payload: { peso: 1, atualizado_em: updated },
-    }),
-  );
-  for (let day = 0; day < 7 && track.materias.length; day++) {
-    const date = new Date();
-    date.setDate(date.getDate() + day);
-    operations.push({
-      entidade: "etapa_estudo",
-      entidade_id: newId(),
-      operacao: "insert",
-      payload: {
-        cronograma_id: id,
-        materia_id: track.materias[day % track.materias.length]._id,
-        data: localDate(date),
-        duracao_min: 60,
-        pausa_min: 15,
-        concluida: 0,
-        atualizado_em: updated,
-      },
-    });
-  }
-  return operations.map((operation, index) => ({ ...operation, id: index + 1 }));
 }

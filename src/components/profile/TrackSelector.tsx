@@ -6,11 +6,17 @@ import { ToneIcon } from "../common/ToneIcon";
 
 interface TrackSelectorProps {
   tracks: Track[];
-  selectedId: TrackId;
+  selectedId: TrackId | null;
+  disabled?: boolean;
   onSelect: (trackId: TrackId) => void;
 }
 
-export function TrackSelector({ tracks, selectedId, onSelect }: TrackSelectorProps) {
+export function TrackSelector({
+  tracks,
+  selectedId,
+  disabled = false,
+  onSelect,
+}: TrackSelectorProps) {
   return (
     <View style={styles.container}>
       <AppText variant="heading" style={styles.title}>
@@ -29,7 +35,8 @@ export function TrackSelector({ tracks, selectedId, onSelect }: TrackSelectorPro
                 pressed && styles.pressed,
               ]}
               accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
+              disabled={disabled}
+              accessibilityState={{ checked: isSelected, selected: isSelected, disabled }}
             >
               <ToneIcon name={track.icon} tone="purple" size={38} iconSize={20} />
               <View style={styles.copy}>

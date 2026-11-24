@@ -60,15 +60,25 @@ No Android Emulator, use `http://10.0.2.2:3000`. No simulador iOS com a API no m
 | Perfil, cronogramas e respostas                | `GET /sync`, com paginação e deduplicação             |
 | Salvar perfil / trocar senha                   | `PATCH /conta`, com `senhaAtual` quando necessário    |
 | Excluir conta                                  | `POST /conta/excluir`, com senha e confirmação        |
-| Criar ciclo, concluir estudo e salvar resposta | `POST /sync`, conferindo o resultado de cada operação |
+| Concluir estudo e salvar resposta | `POST /sync`, conferindo o resultado de cada operação |
 
 - A sessão JWT fica no AsyncStorage; senhas não são persistidas. Um HTTP 401 em uma operação autenticada encerra a sessão. A troca de senha armazena o novo token retornado pela API.
-- A trilha ativa é obtida do cronograma ativo. Ao selecionar outra trilha ou iniciar novo ciclo, o app desativa o cronograma anterior e cria um ciclo inicial de sete dias, uma sessão de 60 minutos por dia, alternando as matérias. O histórico é preservado. Esse gerador inicial não implementa ainda redistribuição adaptativa por desempenho.
-- A resposta é enviada ao tocar em **Salvar e próxima questão** ou **Salvar e concluir sessão**, depois de avaliar a dificuldade. Acertos usam os intervalos de 1/3/7 dias já oferecidos pela interface; erros voltam em 1 dia. Não é uma implementação completa do SM-2.
+- O app solicita cada ciclo pela rota autenticada `POST /estudo/ciclos` e exibe as etapas retornadas. Cada ciclo tem sete sessões de 60 minutos com pausa de 15 minutos. Cada matéria aparece uma vez por rodada. Ao criar o ciclo, o gerador escolhe, entre as matérias que faltam na rodada, a que tem mais questões para revisar naquele dia. Empates seguem a ordem da trilha.
+- O app consulta `GET /estudo/agenda` após entrar, atualizar os dados e salvar uma resposta. O calendário combina as etapas do ciclo com as próximas revisões das questões da trilha. Cada resposta salva atualiza a agenda. Questões atrasadas aparecem em **Hoje**, por ordem de vencimento. **Iniciar revisão** abre a fila do dia. As setas do calendário e o atalho **Próxima revisão** permitem consultar datas futuras.
 - Estatísticas de semana/mês usam apenas tentativas e etapas concluídas recebidas da API. As revisões pendentes consideram a tentativa mais recente de cada questão.
-- O calendário exibe as etapas do cronograma ativo na semana atual. Horários não são inventados: a API fornece data, duração e pausa, mas não horário de início.
+- As etapas mostram a data, a duração e a pausa fornecidas pela API.
 - Concursos podem pertencer a várias trilhas. Salário/vagas ausentes são apresentados como não informados. Editais com URL podem ser abertos.
 - **Atualizar dados** baixa novamente o estado do servidor e reinicia a sessão de questões da tela. Para repetir um salvamento que falhou, use o botão da própria ação antes de atualizar.
+
+## Repetição espaçada por questão
+
+No cadastro, o estudante escolhe uma trilha do catálogo com matérias disponíveis. Ao criar a conta, a API ativa o primeiro ciclo dessa trilha. Cada matéria recebe peso inicial 1 no cadastro e nas trocas de trilha.
+
+A API usa uma adaptação diária do [SM-2 de Piotr Wozniak](https://super-memory.com/english/ol/sm2.htm). Os campos de repetições, intervalo, fator de facilidade e próxima revisão já fazem parte do contrato de sincronização. A tentativa mais recente de cada questão fornece o estado inicial, inclusive para contas antigas. A agenda usa as datas já salvas.
+
+O gabarito determina o acerto. Difícil, médio e fácil correspondem respectivamente às notas 3, 4 e 5 em um acerto, e 0, 1 e 2 em um erro. O fator começa em 2,5 e tem piso de 1,3. Os dois primeiros acertos no prazo agendam 1 e 6 dias. A partir do terceiro, o intervalo anterior é multiplicado pelo fator da questão e arredondado para cima. A nota atual ajusta o fator usado nas revisões seguintes.
+
+A API limita o intervalo a 365 dias. Um erro reinicia a sequência e agenda a questão para o dia seguinte. Um acerto em prática livre antes da data prevista mantém a revisão já marcada. O app consulta `POST /estudo/previa` para mostrar a data ao avaliar a dificuldade e atualiza o cronograma após a confirmação da API.
 
 ## Limites desta integração
 

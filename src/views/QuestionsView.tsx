@@ -9,15 +9,22 @@ import { isLastQuestion } from "@/services/questionService";
 
 export function QuestionsView() {
   const router = useRouter();
-  const { questions, session, selectOption, confirmAnswer, rateQuestion, goToNextQuestion } =
-    useApp();
+  const {
+    questions,
+    session,
+    selectOption,
+    confirmAnswer,
+    rateQuestion,
+    goToNextQuestion,
+    isReviewSession,
+  } = useApp();
 
   const question = questions[session.index];
 
   const handleNext = async () => {
     const isFinished = await goToNextQuestion();
     if (isFinished) {
-      router.push("/stats" as any);
+      router.push(isReviewSession ? "/study" : "/stats");
     }
   };
 
@@ -25,7 +32,7 @@ export function QuestionsView() {
     <ScreenContainer>
       <PageHeading
         eyebrow="PRÁTICA"
-        title="Uma questão. Mais conhecimento"
+        title={isReviewSession ? "Revisões de hoje" : "Uma questão. Mais conhecimento"}
         aside={<SmartPill>Revisão espaçada</SmartPill>}
       />
 

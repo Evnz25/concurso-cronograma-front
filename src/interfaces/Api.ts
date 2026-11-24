@@ -68,6 +68,17 @@ export interface ApiAttempt {
   fator_facilidade: number;
   proxima_revisao: string | null;
 }
+export interface ReviewEntry {
+  questao_id: string;
+  vencimento: string;
+}
+export interface AnswerInput {
+  id: string;
+  questao_id: string;
+  alternativa: string;
+  respondida_em: string;
+  deslocamento_utc_min: number;
+}
 export interface SyncResponse {
   usuario: ApiUser;
   cronogramas: ApiSchedule[];

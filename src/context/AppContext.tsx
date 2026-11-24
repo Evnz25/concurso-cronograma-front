@@ -1,7 +1,23 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Difficulty, Exam, ModalType, ProfileFormData, QuestionSession } from "@/interfaces";
-import type { ApiTrack, ApiUser, SyncOperation, SyncResponse } from "@/interfaces/Api";
+import type {
+  Difficulty,
+  Exam,
+  ModalType,
+  ProfileFormData,
+  Question,
+  QuestionSession,
+} from "@/interfaces";
+import type { AnswerInput, ReviewEntry, ApiTrack, ApiUser, SyncResponse } from "@/interfaces/Api";
+import { useLocalDay } from "@/hooks/useLocalDay";
 import { createApiClient, ApiError } from "@/services/apiService";
 import { API_URL } from "@/services/apiConfig";
 import {
@@ -10,13 +26,12 @@ import {
   mapExam,
   mapQuestion,
   mapTrack,
-  createScheduleOperations,
   newId,
 } from "@/services/apiAdapters";
-import { INITIAL_SESSION, getDifficultyOption } from "@/services/questionService";
+import { INITIAL_SESSION } from "@/services/questionService";
 import { getCompletedMinutes, getPlannedMinutes } from "@/services/scheduleService";
-import { getPendingReviewCount } from "@/services/statsService";
-import { localDate } from "@/services/formatService";
+import { mapReviewDays } from "@/services/reviewService";
+import { formatShortDate } from "@/services/formatService";
 import { EMPTY_USER } from "@/services/userService";
 import { DEFAULT_TRACK_ID } from "@/services/trackService";
 
@@ -31,6 +46,7 @@ interface Data {
   questions: ReturnType<typeof mapQuestion>[];
   exams: Exam[];
   sync: SyncResponse | null;
+  agenda: ReviewEntry[];
 }
 
 const DEFAULT_RAW_TRACKS: ApiTrack[] = [
@@ -84,7 +100,13 @@ const DEFAULT_RAW_TRACKS: ApiTrack[] = [
   { _id: "trilha-gov", nome: "Governança", materias: [] },
 ];
 
-const EMPTY_DATA: Data = { tracks: DEFAULT_RAW_TRACKS, questions: [], exams: [], sync: null };
+const EMPTY_DATA: Data = {
+  tracks: [],
+  questions: [],
+  exams: [],
+  sync: null,
+  agenda: [],
+};
 
 function useAppState() {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
@@ -98,19 +120,52 @@ function useAppState() {
   const initialized = useRef(false);
   const [error, setError] = useState("");
   const [session, setSession] = useState<QuestionSession>(INITIAL_SESSION);
-  const attemptRef = useRef<{ id: string; answeredAt: string } | null>(null);
-  const pendingCycle = useRef<{ trackId: string; operations: SyncOperation[] } | null>(null);
+  const [attempt, setAttempt] = useState<AnswerInput | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [preview, setPreview] = useState<Record<Difficulty, string> | null>(null);
+  const [reviewQueue, setReviewQueue] = useState<Question[] | null>(null);
+  const pendingCycle = useRef<{ trackId: string; id: string } | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType | null>(null);
   const [toastMessage, setToastMessage] = useState("");
 
   const activeSchedule = data.sync?.cronogramas.find((schedule) => schedule.ativo === 1);
-  const tracks = data.tracks.map(mapTrack);
+  const catalog = isGuest && !data.tracks.length ? DEFAULT_RAW_TRACKS : data.tracks;
+  const tracks = catalog.map(mapTrack);
+  const registrationTracks = data.tracks.filter((track) => track.materias.length > 0).map(mapTrack);
   const allBlocks = mapBlocks(data.sync?.cronogramas || [], data.tracks);
-  const scheduleBlocks = allBlocks.filter((block) => block.scheduleId === activeSchedule?.id);
-  const blocks = scheduleBlocks.filter((block) => block.date === localDate());
+  const scheduleBlocks = allBlocks.filter(
+    (block) => activeSchedule?.trilha_id === trackId && block.scheduleId === activeSchedule.id,
+  );
+  const today = useLocalDay();
+  const blocks = scheduleBlocks.filter((block) => block.date === today);
   const completedIds = blocks.filter((block) => block.completed).map((block) => block.id);
-  const questions = data.questions.filter((question) => question.trackId === trackId);
+  const trackQuestions = useMemo(
+    () => data.questions.filter((q) => q.trackId === trackId),
+    [data.questions, trackId],
+  );
+  const reviews = useMemo(
+    () => mapReviewDays(trackQuestions, data.agenda, today),
+    [trackQuestions, data.agenda, today],
+  );
+  const dueToday = reviews.get(today) ?? [];
+  const questions = reviewQueue ?? trackQuestions;
+  const question = questions[session.index];
+  useEffect(() => {
+    if (!attempt || !credentials) return;
+    let current = true;
+    api
+      .preview(credentials.token, attempt)
+      .then((value) => {
+        if (current) setPreview(value);
+      })
+      .catch(() => {
+        if (current) setPreview(null);
+      });
+    return () => {
+      current = false;
+    };
+  }, [attempt, credentials]);
   const answers = (data.sync?.tentativas || []).map((attempt) =>
     mapAttempt(attempt, data.questions),
   );
@@ -131,13 +186,28 @@ function useAppState() {
         trackId: trackId || "trilha-dev",
       };
 
+  function resetQuestions(queue: Question[] | null = null) {
+    setSession(INITIAL_SESSION);
+    setReviewQueue(queue);
+    setAttempt(null);
+    setSubmitted(false);
+    setPreview(null);
+  }
+  function startReview() {
+    if (!dueToday.length || locked.current) return false;
+    if (attempt) {
+      setToastMessage("Salve a resposta em andamento para continuar.");
+    } else {
+      resetQuestions(dueToday.map((review) => review.question));
+    }
+    return true;
+  }
   function clearSession() {
     credentialRef.current = null;
     setCredentials(null);
-    setData((old) => ({ ...old, sync: null }));
+    setData((old) => ({ ...old, sync: null, agenda: [] }));
     setIsGuest(false);
-    setSession(INITIAL_SESSION);
-    attemptRef.current = null;
+    resetQuestions();
     pendingCycle.current = null;
     setActiveModal(null);
     setSelectedExamId(null);
@@ -188,10 +258,11 @@ function useAppState() {
   }
 
   async function load(current: Credentials) {
-    const [rawTracks, rawExams, sync] = await Promise.all([
+    const [rawTracks, rawExams, sync, agenda] = await Promise.all([
       api.tracks(),
       api.exams(),
       api.download(current.token),
+      api.reviews(current.token),
     ]);
     if (sync.usuario.id !== current.userId)
       throw new ApiError("A sessão não corresponde ao usuário.", 401);
@@ -202,14 +273,14 @@ function useAppState() {
       exams: rawExams.map((exam) => mapExam(exam, rawTracks)),
       questions: [...unique.values()].map((question) => mapQuestion(question, rawTracks)),
       sync,
+      agenda,
     });
     setTrackId(
       sync.cronogramas.find((schedule) => schedule.ativo === 1)?.trilha_id ||
         rawTracks[0]?._id ||
         "trilha-dev",
     );
-    setSession(INITIAL_SESSION);
-    attemptRef.current = null;
+    resetQuestions();
   }
 
   useEffect(() => {
@@ -237,14 +308,20 @@ function useAppState() {
     }, false).finally(() => setReady(true));
   }, []);
 
+  const reloadRegistrationTracks = () =>
+    run(async () => {
+      const tracks = await api.tracks();
+      setData((old) => ({ ...old, tracks }));
+    }, false);
+
   const authenticate = (
     mode: "login" | "cadastro",
     email: string,
     password: string,
-    name?: string,
+    registration?: { name: string; trackId: string },
   ) =>
     run(async () => {
-      const result = await api.authenticate(mode, email.trim(), password, name?.trim());
+      const result = await api.authenticate(mode, email.trim(), password, registration);
       const current = { token: result.token, userId: result.usuario.id };
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current));
       credentialRef.current = current;
@@ -315,18 +392,26 @@ function useAppState() {
   function confirmAnswer() {
     if (busy || session.revealed || session.selectedOption === null || !questions[session.index])
       return;
-    attemptRef.current = { id: newId(), answeredAt: new Date().toISOString() };
+    const now = new Date();
+    setPreview(null);
+    setAttempt({
+      id: newId(),
+      questao_id: questions[session.index].id,
+      alternativa: String.fromCharCode(65 + session.selectedOption),
+      respondida_em: now.toISOString(),
+      deslocamento_utc_min: -now.getTimezoneOffset(),
+    });
+
     setSession((previous) => ({ ...previous, revealed: true }));
   }
   function rateQuestion(difficulty: Difficulty) {
-    if (!busy && session.revealed) setSession((previous) => ({ ...previous, rating: difficulty }));
+    if (!busy && !submitted && session.revealed)
+      setSession((previous) => ({ ...previous, rating: difficulty }));
   }
   async function goToNextQuestion(): Promise<boolean> {
     let finished = false;
     await run(async () => {
       const current = requireCredentials();
-      const question = questions[session.index];
-      const attempt = attemptRef.current;
       if (
         !question ||
         !attempt ||
@@ -335,30 +420,14 @@ function useAppState() {
         session.selectedOption === null
       )
         return;
-      const correct = session.selectedOption === question.correctIndex;
-      const interval = correct ? getDifficultyOption(session.rating).intervalDays : 1;
-      const date = new Date(attempt.answeredAt);
-      date.setDate(date.getDate() + interval);
-      const previous = (data.sync?.tentativas || [])
-        .filter((item) => item.questao_id === question.id)
-        .sort((a, b) => b.respondida_em.localeCompare(a.respondida_em))[0];
-      const row = {
-        id: attempt.id,
-        questao_id: question.id,
-        acertou: (correct ? 1 : 0) as 0 | 1,
-        dificuldade_informada: session.rating === "hard" ? 1 : session.rating === "medium" ? 3 : 5,
-        respondida_em: attempt.answeredAt,
-        repeticoes: correct ? (previous?.repeticoes || 0) + 1 : 0,
-        intervalo_dias: interval,
-        fator_facilidade: previous?.fator_facilidade || 2.5,
-        proxima_revisao: localDate(date),
-      };
-      const { id, ...payload } = row;
-      await api.upload(current.token, [
-        { id: 1, entidade: "tentativa_exercicio", entidade_id: id, operacao: "insert", payload },
-      ]);
+      setSubmitted(true);
+      const difficulty = session.rating === "hard" ? 1 : session.rating === "medium" ? 3 : 5;
+      const row = await api.saveAnswer(current.token, attempt, difficulty);
+      const agenda = await api.reviews(current.token);
+      const id = row.id;
       setData((old) => ({
         ...old,
+        agenda,
         sync: old.sync && {
           ...old.sync,
           tentativas: [...old.sync.tentativas.filter((item) => item.id !== id), row],
@@ -366,9 +435,15 @@ function useAppState() {
       }));
       finished = session.index === questions.length - 1;
       setSession({ ...INITIAL_SESSION, index: finished ? 0 : session.index + 1 });
-      attemptRef.current = null;
+      setAttempt(null);
+      setSubmitted(false);
+      setPreview(null);
+      if (finished) setReviewQueue(null);
+      const nextDate = agenda.find((item) => item.questao_id === row.questao_id)?.vencimento;
       setToastMessage(
-        finished ? "Sessão salva! Confira seu desempenho." : "Resposta e próxima revisão salvas.",
+        nextDate
+          ? `Resposta salva. Próxima revisão em ${formatShortDate(nextDate)}.`
+          : "Resposta salva.",
       );
     });
     return finished;
@@ -383,28 +458,53 @@ function useAppState() {
       throw new Error(
         "Conclua a tentativa anterior de criação de cronograma antes de trocar a trilha.",
       );
-    pendingCycle.current ||= {
-      trackId: id,
-      operations: createScheduleOperations(track, activeSchedule),
-    };
-    await api.upload(current.token, pendingCycle.current.operations);
+    pendingCycle.current ||= { trackId: id, id: newId() };
+    const cycle = await api
+      .createCycle(current.token, pendingCycle.current.id, id)
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 400) pendingCycle.current = null;
+        throw error;
+      });
+    if (!cycle.ativo || !data.sync) {
+      await load(current);
+    } else {
+      const agenda = await api.reviews(current.token);
+      setData((old) => ({
+        ...old,
+        agenda,
+        sync: old.sync && {
+          ...old.sync,
+          cronogramas: [
+            ...old.sync.cronogramas
+              .filter((item) => item.id !== cycle.id)
+              .map((item) => ({ ...item, ativo: 0 as const })),
+            cycle,
+          ],
+        },
+      }));
+      setTrackId(cycle.trilha_id);
+      resetQuestions();
+    }
     pendingCycle.current = null;
-    await load(current);
     setToastMessage("Cronograma salvo. Seu histórico anterior foi preservado.");
   }
   const selectTrack = (id: string) =>
     run(async () => {
-      setTrackId(id);
-      const track = data.tracks.find((item) => item._id === id);
+      const track = catalog.find((item) => item._id === id);
       if (!credentialRef.current) {
+        setTrackId(id);
+        resetQuestions();
         setToastMessage(`Trilha selecionada: ${track?.nome || id}`);
         return;
       }
       if (!track || !track.materias?.length) {
-        setToastMessage(`Trilha alterada para ${track?.nome || id}.`);
+        throw new Error("Esta trilha ainda não possui matérias para iniciar os estudos.");
+      }
+      if (id === activeSchedule?.trilha_id && !pendingCycle.current) {
+        if (id !== trackId) resetQuestions();
+        setTrackId(id);
         return;
       }
-      if (id === activeSchedule?.trilha_id && !pendingCycle.current) return;
       await startCycle(id);
     });
   const resetProgress = () =>
@@ -475,6 +575,8 @@ function useAppState() {
     authenticated: !!credentials,
     hasData: !!data.sync,
     authenticate,
+    registrationTracks,
+    reloadRegistrationTracks,
     refresh,
     logout,
     selectedExam: data.exams.find((exam) => exam.id === selectedExamId),
@@ -482,7 +584,13 @@ function useAppState() {
     toastMessage,
     completedMinutes: getCompletedMinutes(blocks, completedIds),
     plannedMinutes: getPlannedMinutes(blocks),
-    pendingReviews: getPendingReviewCount(answers),
+    today,
+    reviews,
+    startReview,
+    isReviewSession: !!reviewQueue,
+    nextReviewDate: session.rating ? preview?.[session.rating] : null,
+    ratingLocked: submitted || busy,
+    pendingReviews: dueToday.length,
     toggleBlock,
     selectOption,
     confirmAnswer,

@@ -76,7 +76,12 @@ export function getGoalPercent(completedMinutes: number, plannedMinutes: number)
   return Math.min(100, (completedMinutes / plannedMinutes) * 100);
 }
 
-export function getWeekDays(reference: Date = new Date(), blocks: StudyBlock[] = []): WeekDay[] {
+export function getWeekDays(
+  reference: Date = new Date(),
+  blocks: StudyBlock[] = [],
+  today = localDate(),
+  reviewDates = new Set<string>(),
+): WeekDay[] {
   const monday = getStartOfWeek(reference);
   return WEEK_DAY_LABELS.map((label, index) => {
     const date = new Date(monday);
@@ -86,9 +91,9 @@ export function getWeekDays(reference: Date = new Date(), blocks: StudyBlock[] =
       label,
       day: date.getDate(),
       date: key,
-      isPast: key < localDate(reference),
-      isToday: key === localDate(reference),
-      hasStudy: blocks.some((block) => block.date === key),
+      isPast: key < today,
+      isToday: key === today,
+      hasStudy: reviewDates.has(key) || blocks.some((block) => block.date === key),
     };
   });
 }

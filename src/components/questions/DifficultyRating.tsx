@@ -7,16 +7,19 @@ import { Icon } from "../common/Icon";
 
 interface DifficultyRatingProps {
   rating: Difficulty | null;
+  disabled: boolean;
   onRate: (difficulty: Difficulty) => void;
 }
 
-export function DifficultyRating({ rating, onRate }: DifficultyRatingProps) {
+export function DifficultyRating({ rating, disabled, onRate }: DifficultyRatingProps) {
   return (
     <View style={styles.container}>
       <AppText variant="heading" style={styles.heading}>
         Como foi resolver esta questão?
       </AppText>
-      <AppText variant="caption">Sua avaliação define quando vamos revisá-la novamente.</AppText>
+      <AppText variant="caption">
+        O resultado, a dificuldade e seu histórico definem a próxima revisão.
+      </AppText>
 
       <View style={styles.buttonsRow}>
         {DIFFICULTY_OPTIONS.map((option) => {
@@ -24,6 +27,7 @@ export function DifficultyRating({ rating, onRate }: DifficultyRatingProps) {
           return (
             <Pressable
               key={option.value}
+              disabled={disabled}
               onPress={() => onRate(option.value)}
               style={({ pressed }) => [
                 styles.btn,
@@ -31,7 +35,7 @@ export function DifficultyRating({ rating, onRate }: DifficultyRatingProps) {
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
+              accessibilityState={{ selected: isSelected, disabled }}
             >
               <Icon
                 name={option.icon}
@@ -43,12 +47,6 @@ export function DifficultyRating({ rating, onRate }: DifficultyRatingProps) {
                 style={[styles.label, isSelected && styles.labelSelected]}
               >
                 {option.label}
-              </AppText>
-              <AppText
-                variant="caption"
-                style={[styles.reviewLabel, isSelected && styles.reviewLabelSelected]}
-              >
-                {option.reviewLabel}
               </AppText>
             </Pressable>
           );
@@ -92,13 +90,6 @@ const styles = StyleSheet.create({
   },
   labelSelected: {
     color: colors.primary,
-  },
-  reviewLabel: {
-    fontSize: 10,
-    textAlign: "center",
-  },
-  reviewLabelSelected: {
-    color: colors.primaryText,
   },
   pressed: {
     opacity: 0.8,

@@ -5,15 +5,19 @@ import { PageHeading } from "@/components/common/PageHeading";
 import { Card } from "@/components/common/Card";
 import { AppText } from "@/components/common/AppText";
 import { Button } from "@/components/common/Button";
+import { TrackSelector } from "@/components/profile/TrackSelector";
 import { useApp } from "@/context/AppContext";
 import { colors, spacing, radius } from "@/theme";
 
 export function AuthView() {
-  const { authenticate, busy, error, enterAsGuest } = useApp();
+  const { authenticate, busy, error, enterAsGuest, registrationTracks, reloadRegistrationTracks } =
+    useApp();
   const [mode, setMode] = useState<"login" | "cadastro">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [trackId, setTrackId] = useState<string | null>(null);
+  const selectedTrack = registrationTracks.find((track) => track.id === trackId);
   return (
     <ScreenContainer>
       <PageHeading
@@ -57,7 +61,32 @@ export function AuthView() {
           autoComplete={mode === "login" ? "current-password" : "new-password"}
           editable={!busy}
         />
-        {mode === "cadastro" && <AppText variant="caption">Use pelo menos 8 caracteres.</AppText>}
+        {mode === "cadastro" && (
+          <>
+            <AppText variant="caption">Use pelo menos 8 caracteres.</AppText>
+            {registrationTracks.length > 0 ? (
+              <>
+                <TrackSelector
+                  tracks={registrationTracks}
+                  selectedId={trackId}
+                  onSelect={setTrackId}
+                  disabled={busy}
+                />
+                <AppText variant="caption">Todas as matérias da trilha começam com peso 1.</AppText>
+              </>
+            ) : (
+              <>
+                <AppText>Nenhuma trilha disponível para cadastro no momento.</AppText>
+                <Button
+                  variant="text"
+                  label="Atualizar trilhas"
+                  onPress={reloadRegistrationTracks}
+                  disabled={busy}
+                />
+              </>
+            )}
+          </>
+        )}
         {!!error && (
           <AppText color={colors.danger} accessibilityRole="alert">
             {error}
@@ -69,10 +98,17 @@ export function AuthView() {
           disabled={
             !email.trim() ||
             !password ||
-            (mode === "cadastro" && (!name.trim() || password.length < 8))
+            (mode === "cadastro" && (!name.trim() || password.length < 8 || !selectedTrack))
           }
           onPress={() => {
-            void authenticate(mode, email, password, mode === "cadastro" ? name : undefined);
+            void authenticate(
+              mode,
+              email,
+              password,
+              mode === "cadastro" && selectedTrack
+                ? { name, trackId: selectedTrack.id }
+                : undefined,
+            );
           }}
         />
         <Button

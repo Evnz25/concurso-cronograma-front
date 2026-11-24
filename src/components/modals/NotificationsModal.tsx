@@ -38,7 +38,13 @@ export function NotificationsModal({
           </AppText>
         </View>
 
-        <Button label="Começar revisão" icon="arrow" onPress={onStartReview} fullWidth />
+        <Button
+          label="Começar revisão"
+          icon="arrow"
+          disabled={!pendingReviews}
+          onPress={onStartReview}
+          fullWidth
+        />
       </View>
     </Modal>
   );

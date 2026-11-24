@@ -28,7 +28,7 @@ export interface StudyBreak {
 }
 
 export interface WeekDay {
-  date?: string;
+  date: string;
   label: string;
   day: number;
   isPast: boolean;
