@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { AppText } from "@/components/common/AppText";
 import { Badge } from "@/components/common/Badge";
 import { Card } from "@/components/common/Card";
@@ -11,6 +11,7 @@ import { SmartPill } from "@/components/common/SmartPill";
 import { DayOverview } from "@/components/schedule/DayOverview";
 import { StudyBlockList } from "@/components/schedule/StudyBlockList";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
+import { SimulationResultModal } from "@/components/modals/SimulationResultModal";
 import { useApp } from "@/context/AppContext";
 import { formatMonthYear, formatShortDate, getIsoWeek, localDate } from "@/services/formatService";
 import { getDayPlan, getWeekDays } from "@/services/scheduleService";
@@ -18,19 +19,26 @@ import { spacing } from "@/theme";
 
 export function StudyView() {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     scheduleBlocks,
     nextWeek,
     toggleBlock,
     today,
     reviews,
-    startReview,
+    startSimulation,
+    openSimulation,
     busy,
+    simulationResult,
+    dismissSimulationResult,
+    rawTracks,
   } = useApp();
   const [selection, setSelection] = useState<string | null>(null);
   const selectedDate = selection ?? today;
   const reference = new Date(selectedDate + "T12:00:00");
-  const weekDays = getWeekDays(reference, scheduleBlocks, today, new Set(reviews.keys()));
+  const reviewDates = new Set(reviews.keys());
+  if (openSimulation) reviewDates.add(today);
+  const weekDays = getWeekDays(reference, scheduleBlocks, today, reviewDates);
   const selectedWeekDay = weekDays.find((day) => day.date === selectedDate)!;
   const blocks = scheduleBlocks.filter((block) => block.date === selectedDate);
   const completedIds = blocks.filter((block) => block.completed).map((block) => block.id);
@@ -40,9 +48,11 @@ export function StudyView() {
       "O plano desta semana será calculado quando ela começar, com base nas questões respondidas nas semanas anteriores.";
   }
   const dayReviews = reviews.get(selectedDate) ?? [];
-  const themes = new Map<string, number>();
+  const canResume = selectedWeekDay.isToday && openSimulation;
+  const showSimulation = dayReviews.length > 0 || canResume;
+  const subjects = new Map<string, number>();
   for (const { question } of dayReviews) {
-    themes.set(question.theme, (themes.get(question.theme) ?? 0) + 1);
+    subjects.set(question.topic, (subjects.get(question.topic) ?? 0) + 1);
   }
   const overdue = dayReviews.filter(({ due }) => due < today).length;
   const nextDate = [...reviews.keys()].filter((day) => day > selectedDate).sort()[0];
@@ -52,6 +62,14 @@ export function StudyView() {
 
   return (
     <ScreenContainer>
+      {simulationResult && pathname === "/study" && (
+        <SimulationResultModal
+          title={simulationResult.title}
+          summary={simulationResult.summary}
+          subjects={rawTracks.find(track => track._id === simulationResult.trackId)?.materias ?? []}
+          onClose={dismissSimulationResult}
+        />
+      )}
       <PageHeading
         eyebrow="SEU PLANO, NO SEU RITMO"
         title="Cronograma"
@@ -79,35 +97,43 @@ export function StudyView() {
         {blocks.length > 0 && <Badge tone="purple">{plan.badge}</Badge>}
       </View>
 
-      {dayReviews.length > 0 && (
+      {showSimulation && (
         <Card style={styles.reviewCard}>
           <AppText variant="subheading">
-            Revisão de {dayReviews.length} {dayReviews.length === 1 ? "questão" : "questões"}
+            {canResume ? "Simulado em andamento" : "Simulado de revisão"}
           </AppText>
-          {[...themes].map(([theme, count]) => (
-            <AppText key={theme} variant="body">
-              {theme} · {count}
+          {[...subjects].map(([subject, count]) => (
+            <AppText key={subject} variant="body">
+              {subject} · {count} {count === 1 ? "questão" : "questões"}
             </AppText>
           ))}
           {overdue > 0 && <AppText variant="caption">{overdue} com revisão em atraso</AppText>}
+          {selectedDate > today && (
+            <AppText variant="caption">Disponível em {formatShortDate(selectedDate)}.</AppText>
+          )}
           {selectedWeekDay.isToday && (
             <Button
-              label="Iniciar revisão"
+              label={canResume ? "Continuar simulado" : "Iniciar simulado"}
               disabled={busy}
               icon="arrow"
-              onPress={() => {
-                if (startReview()) router.push("/questions");
+              onPress={async () => {
+                if (await startSimulation()) router.push("/questions");
               }}
             />
           )}
         </Card>
+      )}
+      {selectedWeekDay.isToday && blocks.length > 0 && !showSimulation && !nextDate && (
+        <AppText variant="caption">
+          Ao concluir um bloco, a revisão do conteúdo estudado entra no calendário quando há questões disponíveis.
+        </AppText>
       )}
       {blocks.length > 0 && (
         <Card>
           <StudyBlockList blocks={blocks} completedIds={completedIds} onToggle={toggleBlock} />
         </Card>
       )}
-      {!blocks.length && !dayReviews.length && (
+      {!blocks.length && !showSimulation && (
         <DayOverview plan={plan} onBackToToday={() => setSelection(null)} />
       )}
       {nextDate && (

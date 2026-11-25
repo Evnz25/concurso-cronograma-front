@@ -2,6 +2,7 @@ import type {
   AnswerInput,
   ApiAttempt,
   ApiSchedule,
+  SimulationSummary,
   ReviewEntry,
   ApiExam,
   ApiQuestion,
@@ -65,8 +66,22 @@ export function createApiClient(baseUrl: string) {
 
   return {
     request,
+    startSimulation: (token: string, scheduleId: string) =>
+      request<{ id: string; total: number; pendentes: string[] }>("/estudo/simulados", token, "POST", {
+        cronograma_id: scheduleId, agendado: true, deslocamento_utc_min: -new Date().getTimezoneOffset(),
+      }),
+    finishSimulation: (token: string, id: string) =>
+      request<{ cronograma: ApiSchedule; resumo: SimulationSummary | null }>(`/estudo/simulados/${encodeURIComponent(id)}/concluir`, token, "POST", {
+        deslocamento_utc_min: -new Date().getTimezoneOffset(),
+      }),
     reviews: async (token: string) =>
       (await request<{ revisoes: ReviewEntry[] }>("/estudo/agenda", token)).revisoes,
+    studyAgenda: async (token: string) => {
+      const result = await request<{ revisoes: ReviewEntry[]; em_andamento: boolean }>(
+        `/estudo/agenda?simulado=1&deslocamento_utc_min=${-new Date().getTimezoneOffset()}`, token,
+      );
+      return { agenda: result.revisoes, openSimulation: result.em_andamento };
+    },
     preview: (token: string, input: AnswerInput) =>
       request<Record<"hard" | "medium" | "easy", string>>("/estudo/previa", token, "POST", input),
     createCycle: async (token: string, id: string, trackId: string) =>
@@ -80,7 +95,8 @@ export function createApiClient(baseUrl: string) {
     async saveAnswer(token: string, input: AnswerInput, difficulty: number) {
       const { id, ...answer } = input;
       const response = await request<{
-        resultados: { status: string; tentativa?: ApiAttempt; motivo?: string }[];
+        resultados: { status: string; tentativa?: ApiAttempt; motivo?: string;
+          plano?: { cronograma: ApiSchedule; resumo: SimulationSummary } | null }[];
       }>("/sync", token, "POST", {
         operacoes: [
           {
@@ -88,14 +104,14 @@ export function createApiClient(baseUrl: string) {
             entidade: "tentativa_exercicio",
             entidade_id: id,
             operacao: "insert",
-            payload: { ...answer, dificuldade_informada: difficulty },
+            payload: { ...answer, dificuldade_informada: difficulty, ...(!answer.simulado_id && { incluir_cronograma: true }) },
           },
         ],
       });
       const result = response.resultados[0];
       if (result?.status !== "ok" || result.tentativa?.id !== id)
         throw new ApiError(result?.motivo || "A API não confirmou o agendamento da revisão.");
-      return result.tentativa;
+      return { tentativa: result.tentativa, plano: result.plano };
     },
     async authenticate(
       mode: "login" | "cadastro",
@@ -124,6 +140,10 @@ export function createApiClient(baseUrl: string) {
       });
       return this.download(token);
     },
+    updateAfterPractice: (token: string) =>
+      request<{ cronograma: ApiSchedule | null; resumo: SimulationSummary | null }>("/estudo/ciclos/atual", token, "POST", {
+        incluir_cronograma: true, deslocamento_utc_min: -new Date().getTimezoneOffset(),
+      }),
     exams: async () => (await request<{ concursos: ApiExam[] }>("/catalogo/concursos")).concursos,
     async questions(trackId: string) {
       const result: ApiQuestion[] = [];

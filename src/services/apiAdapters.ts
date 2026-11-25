@@ -121,8 +121,8 @@ export function mapAttempt(attempt: ApiAttempt, questions: Question[]): AnswerRe
   return {
     id: attempt.id,
     questionId: attempt.questao_id,
-    themeId: question?.themeId || attempt.questao_id,
-    theme: question?.theme || "Questão fora do catálogo",
+    subjectId: question?.subjectId,
+    subject: question?.topic || "Matéria fora do catálogo",
     correct: attempt.acertou === 1,
     answeredAt: attempt.respondida_em,
     nextReview: attempt.proxima_revisao,

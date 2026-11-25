@@ -11,17 +11,14 @@ export interface SubjectHours {
 
 export type SrsPriority = "Em dia" | "Média" | "Alta";
 
-/** Desempenho em questões de um mesmo tema (RF14). */
-export interface ThemePerformance {
+/** Desempenho em questões de uma mesma matéria (RF14). */
+export interface SubjectPerformanceRow {
   title: string;
   icon: IconName;
   color: ColorTone;
   hits: number;
   errors: number;
   priority: SrsPriority;
-}
-
-export interface ThemePerformanceRow extends ThemePerformance {
   percent: number;
 }
 

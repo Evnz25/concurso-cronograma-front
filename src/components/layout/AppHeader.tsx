@@ -7,14 +7,12 @@ import { Icon } from "../common/Icon";
 interface AppHeaderProps {
   title?: string;
   userName: string;
-  streakDays: number;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
 }
 
 export function AppHeader({
   userName,
-  streakDays,
   onOpenNotifications,
   onOpenProfile,
 }: AppHeaderProps) {
@@ -31,11 +29,6 @@ export function AppHeader({
       </View>
 
       <View style={styles.actions}>
-        <View style={styles.streak}>
-          <Icon name="fire" size={16} color="#d47942" />
-          <AppText style={styles.streakDays}>{streakDays}</AppText>
-        </View>
-
         {onOpenNotifications && (
           <Pressable
             accessibilityRole="button"
@@ -87,20 +80,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm + 2,
-  },
-  streak: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: "#fff6f0",
-    borderRadius: radius.pill,
-  },
-  streakDays: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    color: "#d47942",
   },
   iconBtn: {
     width: 32,

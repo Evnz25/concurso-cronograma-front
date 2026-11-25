@@ -19,10 +19,10 @@ export interface Question {
 /** Resultado de uma questão respondida (base para o modo offline - RNF04). */
 export interface AnswerRecord {
   id?: string;
-  themeId?: string;
+  subjectId?: string;
   nextReview?: string | null;
   questionId: string;
-  theme: string;
+  subject: string;
   correct: boolean;
   difficulty?: Difficulty;
   answeredAt: string;

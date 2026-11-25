@@ -37,7 +37,8 @@ export function isCorrectAnswer(question: Question, optionIndex: number | null):
 export function createAnswerRecord(question: Question, optionIndex: number | null): AnswerRecord {
   return {
     questionId: question.id,
-    theme: question.theme,
+    subjectId: question.subjectId,
+    subject: question.topic,
     correct: isCorrectAnswer(question, optionIndex),
     answeredAt: new Date().toISOString(),
   };

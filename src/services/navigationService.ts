@@ -8,13 +8,7 @@ export const NAVIGATION: NavigationItem[] = [
     icon: "calendar",
     mobile: "Cronograma",
   },
-  {
-    id: "questions",
-    name: "Banco de questões",
-    icon: "book",
-    mobile: "Questões",
-  },
-  /*{ id: "stats", name: "Meu desempenho", icon: "chart", mobile: "Desempenho" },*/
+  { id: "stats", name: "Meu desempenho", icon: "chart", mobile: "Desempenho" },
   { id: "profile", name: "Meu perfil", icon: "user", mobile: "Perfil" },
 ];
 
@@ -23,7 +17,7 @@ export function getNavigation(): NavigationItem[] {
 }
 
 export function getPageTitle(page: PageId): string {
-  if (page === "stats") return "Meu desempenho";
+  if (page === "questions") return "Banco de questões";
   return NAVIGATION.find((item) => item.id === page)?.name ?? "";
 }
 

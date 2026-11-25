@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import type { ThemePerformanceRow } from "@/interfaces";
+import type { SubjectPerformanceRow } from "@/interfaces";
 import { getPriorityColor } from "@/services/statsService";
 import { colors, fonts, radius, spacing } from "@/theme";
 import { AppText } from "../common/AppText";
@@ -9,16 +9,16 @@ import { ProgressBar } from "../common/ProgressBar";
 import { SmartPill } from "../common/SmartPill";
 import { ToneIcon } from "../common/ToneIcon";
 
-interface ThemePerformanceTableProps {
-  rows: ThemePerformanceRow[];
+interface SubjectPerformanceTableProps {
+  rows: SubjectPerformanceRow[];
 }
 
-export function ThemePerformanceTable({ rows }: ThemePerformanceTableProps) {
+export function SubjectPerformanceTable({ rows }: SubjectPerformanceTableProps) {
   return (
     <Card style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <AppText variant="heading">Um olhar para cada tema</AppText>
+          <AppText variant="heading">Desempenho por matéria</AppText>
           <AppText variant="caption">Priorização do SRS</AppText>
         </View>
         <SmartPill iconSize={13}>Inteligente</SmartPill>

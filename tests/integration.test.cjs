@@ -10,10 +10,24 @@ const { mapTrack, mapQuestion, mapExam, mapBlocks, mapAttempt } = loadTs(
 const stats = loadTs("src/services/statsService.ts");
 const { localDate } = loadTs("src/services/formatService.ts");
 const { filterExams } = loadTs("src/services/examService.ts");
-const { getWeekDays, getBreakBefore, getPlannedMinutes } = loadTs(
+const { getWeekDays, getBreakBefore, getPlannedMinutes, mergePracticeChanges } = loadTs(
   "src/services/scheduleService.ts",
 );
 const { createProxy } = require("../scripts/api-proxy.cjs");
+
+test("a revisão pede o plano da conta e o fechamento mostra a mudança líquida das respostas", async t => {
+  const dia = "2026-11-25";
+  const peso = (anterior, atual) => ({ materia_id: "sql", anterior, atual });
+  const bloco = (anterior, atual) => ({ data: dia, posicao: 1, anterior, atual });
+  const primeira = { pesos: [peso(1, 1.12)], blocos: [bloco("bi", "sql")] };
+  const segunda = { pesos: [peso(1.12, 0.98)], blocos: [bloco("sql", "bi")] };
+  const requests = mockResponses(t, [{ body: { resultados: [{ status: "ok", tentativa: { id: "t1" },
+    plano: { cronograma: { id: "c" }, resumo: segunda } }] } }]);
+  const { plano } = await createApiClient("http://api").saveAnswer("token", { id: "t1", questao_id: "q", alternativa: "B" }, 3);
+  assert.equal(requests[0].url, "http://api/sync");
+  assert.equal(JSON.parse(requests[0].options.body).operacoes[0].payload.incluir_cronograma, true);
+  assert.deepEqual(mergePracticeChanges(primeira, plano.resumo, dia), { pesos: [peso(1, 0.98)], blocos: [] });
+});
 
 // Formatos reais das rotas catalogo.js e sync.js, incluindo IDs não conhecidos pelo protótipo.
 const tracks = [
@@ -75,6 +89,29 @@ test("converte catálogo, gabarito, múltiplas trilhas e campos ausentes", () =>
   assert.equal(exam.registrationDeadline, "2026-12-01");
   assert.equal(filterExams([exam], "mine", "trilha-dados").length, 1);
   assert.equal(filterExams([exam], "mine", "outra").length, 0);
+});
+
+test("cliente retoma simulado e confirma o cronograma persistido ao enviar a última resposta", async t => {
+  const prova = { id: "sim-1", total: 2, pendentes: ["q2"] };
+  const ciclo = { id: "ciclo", pesos: [{ materia_id: "a", peso_inicial: 1, peso: 1.32 }], etapas: [] };
+  const resultado = { cronograma: ciclo, resumo: {
+    pesos: [{ materia_id: "a", anterior: 1.18, atual: 1.32 }], blocos: [],
+  } };
+  const requests = mockResponses(t, [
+    { body: prova }, { body: { resultados: [{ status: "ok", tentativa: { id: "t2" } }] } },
+    { body: resultado },
+  ]);
+  const client = createApiClient("http://api");
+  assert.deepEqual(await client.startSimulation("token", ciclo.id), prova);
+  await client.saveAnswer("token", { id: "t2", questao_id: "q2", alternativa: "A",
+    simulado_id: prova.id, concluir_simulado: true }, 1);
+  assert.deepEqual(await client.finishSimulation("token", prova.id), resultado);
+  assert.equal(JSON.parse(requests[0].options.body).cronograma_id, ciclo.id);
+  assert.equal(JSON.parse(requests[0].options.body).agendado, true);
+  const payload = JSON.parse(requests[1].options.body).operacoes[0].payload;
+  assert.equal(payload.simulado_id, prova.id);
+  assert.equal(payload.concluir_simulado, true);
+  assert.equal(requests[2].url, "http://api/estudo/simulados/sim-1/concluir");
 });
 
 test("baixa todas as páginas de questões e codifica IDs", async (t) => {
@@ -295,12 +332,13 @@ test("usa a prévia e a tentativa confirmada pelo servidor", async (t) => {
     deslocamento_utc_min: -180,
   };
   assert.deepEqual(await client.preview("token", input), dates);
-  assert.deepEqual(await client.saveAnswer("token", input, 5), saved);
+  assert.deepEqual((await client.saveAnswer("token", input, 5)).tentativa, saved);
   assert.deepEqual(await client.reviews("token"), agenda);
   const { id, ...fields } = input;
   assert.deepEqual(JSON.parse(requests[1].options.body).operacoes[0].payload, {
     ...fields,
     dificuldade_informada: 5,
+    incluir_cronograma: true,
   });
   assert.ok(requests.every((r) => r.options.headers.Authorization === "Bearer token"));
   await assert.rejects(client.saveAnswer("token", input, 5), /Questão inválida/);
@@ -436,7 +474,11 @@ test("revisão pendente usa somente a tentativa mais recente da questão", () =>
     },
     [question],
   );
-  assert.equal(attempt.theme, "SQL");
+  assert.equal(attempt.subject, question.topic);
+  const outraQuestao = { ...question, id: 'segunda', themeId: 'outro-tema', theme: 'Outro tema' };
+  const outraResposta = mapAttempt({ questao_id: outraQuestao.id, acertou: 0 }, [outraQuestao]);
+  const desempenho = stats.getSubjectPerformance([attempt, outraResposta]);
+  assert.deepEqual(desempenho.map(row => [row.title, row.hits, row.errors]), [[question.topic, 1, 1]]);
   assert.equal(attempt.difficulty, "easy");
   assert.equal(stats.getPendingReviewCount([attempt]), 1);
   assert.equal(

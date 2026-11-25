@@ -37,6 +37,7 @@ export interface WeekDay {
   isPast: boolean;
   isToday: boolean;
   hasStudy: boolean;
+  hasSimulation?: boolean;
 }
 
 export type DayStatus = "today" | "past" | "planned" | "rest";

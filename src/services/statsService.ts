@@ -7,7 +7,7 @@ import type {
   StudyBlock,
   SubjectHours,
   SubjectWeight,
-  ThemePerformanceRow,
+  SubjectPerformanceRow,
 } from "@/interfaces";
 import type { ApiSchedule, ApiTrack } from "@/interfaces/Api";
 import { getSubjectIcon } from "./apiAdapters";
@@ -83,12 +83,12 @@ export function getChartAxis(data: SubjectHours[]): string[] {
   const max = getChartMaxHours(data);
   return [max, (max * 2) / 3, max / 3, 0].map((value) => value + "h");
 }
-export function getThemePerformance(answers: AnswerRecord[]): ThemePerformanceRow[] {
-  const rows = new Map<string, ThemePerformanceRow>();
+export function getSubjectPerformance(answers: AnswerRecord[]): SubjectPerformanceRow[] {
+  const rows = new Map<string, SubjectPerformanceRow>();
   answers.forEach((answer) => {
-    const key = answer.themeId || answer.theme;
-    const row: ThemePerformanceRow = rows.get(key) || {
-      title: answer.theme,
+    const key = answer.subjectId || answer.subject;
+    const row: SubjectPerformanceRow = rows.get(key) || {
+      title: answer.subject,
       icon: "book",
       color: "purple",
       hits: 0,

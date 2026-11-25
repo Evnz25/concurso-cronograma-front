@@ -64,7 +64,7 @@ No Android Emulator, use `http://10.0.2.2:3000`. No simulador iOS com a API no m
 
 - A sessão JWT fica no AsyncStorage; senhas não são persistidas. Um HTTP 401 em uma operação autenticada encerra a sessão. A troca de senha armazena o novo token retornado pela API.
 - O cadastro cria o primeiro ciclo na API. Ao entrar, o app carrega o ciclo ativo da conta. O calendário mostra quatro blocos de uma hora por dia, com um intervalo de 15 minutos entre o segundo e o terceiro bloco. A API distribui os 28 blocos da semana conforme os pesos, com até dois blocos da mesma matéria por dia. Trilhas com matéria única usam os quatro blocos para ela. Cada bloco exibe o peso, a duração e os minutos da matéria no ciclo e pode ser concluído separadamente.
-- O app consulta `GET /estudo/agenda` após entrar, atualizar os dados e salvar uma resposta. O calendário combina as etapas do ciclo com as próximas revisões das questões da trilha. Cada resposta salva atualiza a agenda. Questões atrasadas aparecem em **Hoje**, por ordem de vencimento. **Iniciar revisão** abre a fila do dia. As setas do calendário e o atalho **Próxima revisão** permitem consultar datas futuras.
+- O cronograma consulta a agenda da API ao carregar, marcar ou desmarcar um bloco e salvar respostas. Um toque conclui o bloco e registra o estudo da matéria inteira. O ícone de livro indica os dias com simulado. Atrasos passam para **Hoje** e datas futuras mostram as matérias previstas.
 - Estatísticas de semana/mês usam apenas tentativas e etapas concluídas recebidas da API. As revisões pendentes consideram a tentativa mais recente de cada questão.
 - As etapas mostram a data, a duração e a pausa fornecidas pela API.
 - Concursos podem pertencer a várias trilhas. Salário/vagas ausentes são apresentados como não informados. Editais com URL podem ser abertos.
@@ -74,7 +74,7 @@ No Android Emulator, use `http://10.0.2.2:3000`. No simulador iOS com a API no m
 
 No cadastro, o estudante escolhe uma trilha do catálogo com matérias disponíveis. Ao criar a conta, a API ativa o primeiro ciclo dessa trilha. Cada matéria recebe peso inicial 1 no cadastro e nas trocas de trilha.
 
-A cada sete dias a API ajusta os pesos a partir das questões distintas respondidas nas semanas encerradas. Ao entrar, atualizar os dados ou chegar ao fim do ciclo com o app aberto, o app solicita a renovação em `POST /estudo/ciclos/atual`. A seção **Distribuição dos 7 dias** mostra o peso e os minutos de cada matéria no cronograma ativo.
+No **Cronograma**, **Iniciar simulado** abre as questões que chegaram à data de revisão. **Continuar simulado** retoma uma sessão em andamento. **Concluir simulado** salva a última resposta e mostra como os pesos e os blocos mudaram. A aba **Desempenho** apresenta as estatísticas de estudo.
 
 A API usa uma adaptação diária do [SM-2 de Piotr Wozniak](https://super-memory.com/english/ol/sm2.htm). Os campos de repetições, intervalo, fator de facilidade e próxima revisão já fazem parte do contrato de sincronização. A tentativa mais recente de cada questão fornece o estado inicial, inclusive para contas antigas. A agenda usa as datas já salvas.
 

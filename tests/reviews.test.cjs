@@ -21,5 +21,7 @@ test("calendário mostra a agenda da API na trilha, inclusive atrasos e outras s
   assert.equal(calendar.size, 2);
   const week = getWeekDays(new Date(2026, 11, 7), [], today, new Set(calendar.keys()));
   assert.equal(week[0].hasStudy, true);
+  assert.equal(week[0].hasSimulation, true);
+  assert.equal(week[1].hasSimulation, false);
   assert.equal(week[0].isToday, false);
 });

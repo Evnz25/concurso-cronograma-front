@@ -1,4 +1,5 @@
 import { AppText } from "@/components/common/AppText";
+import { Button } from "@/components/common/Button";
 import { useRouter } from "expo-router";
 import { PageHeading } from "@/components/common/PageHeading";
 import { ScreenContainer } from "@/components/common/ScreenContainer";
@@ -17,6 +18,7 @@ export function QuestionsView() {
     rateQuestion,
     goToNextQuestion,
     isReviewSession,
+    simulation, finishPendingSimulation, busy, activeSchedule,
   } = useApp();
 
   const question = questions[session.index];
@@ -24,7 +26,7 @@ export function QuestionsView() {
   const handleNext = async () => {
     const isFinished = await goToNextQuestion();
     if (isFinished) {
-      router.push(isReviewSession ? "/study" : "/stats");
+      router.push(isReviewSession || simulation || activeSchedule ? "/study" : "/stats");
     }
   };
 
@@ -32,15 +34,19 @@ export function QuestionsView() {
     <ScreenContainer>
       <PageHeading
         eyebrow="PRÁTICA"
-        title={isReviewSession ? "Revisões de hoje" : "Uma questão. Mais conhecimento"}
+        title={simulation ? "Simulado da trilha" : isReviewSession ? "Revisões de hoje" : "Prática de questões"}
         aside={<SmartPill>Revisão espaçada</SmartPill>}
       />
 
-      {question ? (
+      {simulation && !question ? (
+        <Button label="Concluir simulado" disabled={busy} onPress={async () => {
+          if (await finishPendingSimulation()) router.push("/study");
+        }} />
+      ) : question ? (
         <QuestionCard
           question={question}
-          position={session.index + 1}
-          total={questions.length}
+          position={session.index + 1 + (simulation ? simulation.total - questions.length : 0)}
+          total={simulation?.total ?? questions.length}
           selectedOption={session.selectedOption}
           revealed={session.revealed}
           rating={session.rating}

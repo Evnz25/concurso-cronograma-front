@@ -55,7 +55,7 @@ export interface ApiSchedule {
   ativo: 0 | 1;
   atualizado_em: string;
   etapas: ApiStep[];
-  pesos: { materia_id: string; peso: number }[];
+  pesos: { materia_id: string; peso: number; peso_inicial?: number }[];
 }
 export interface ApiAttempt {
   id: string;
@@ -68,11 +68,17 @@ export interface ApiAttempt {
   fator_facilidade: number;
   proxima_revisao: string | null;
 }
+export interface SimulationSummary {
+  pesos: { materia_id: string; anterior: number; atual: number }[];
+  blocos: { data: string; posicao: number; anterior: string; atual: string }[];
+}
 export interface ReviewEntry {
   questao_id: string;
   vencimento: string;
 }
 export interface AnswerInput {
+  simulado_id?: string;
+  concluir_simulado?: boolean;
   id: string;
   questao_id: string;
   alternativa: string;

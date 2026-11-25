@@ -38,10 +38,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="questions"
+        name="stats"
         options={{
-          title: "Questões",
-          tabBarIcon: ({ color }) => <Icon name="book" size={22} color={color as string} />,
+          title: "Desempenho",
+          tabBarIcon: ({ color }) => <Icon name="chart" size={22} color={color as string} />,
         }}
       />
       <Tabs.Screen
@@ -51,6 +51,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <Icon name="user" size={22} color={color as string} />,
         }}
       />
+      <Tabs.Screen name="questions" options={{ href: null }} />
     </Tabs>
   );
 }

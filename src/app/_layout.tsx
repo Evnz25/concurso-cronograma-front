@@ -32,6 +32,8 @@ function GlobalModalsAndToast() {
     toastMessage,
     pendingReviews,
     startReview,
+    openSimulation,
+    startSimulation,
     blocks,
     completedIds,
     closeModals,
@@ -60,8 +62,8 @@ function GlobalModalsAndToast() {
           pendingReviews={pendingReviews}
           pendingBlocks={blocks.length - completedIds.length}
           onClose={closeModals}
-          onStartReview={() => {
-            if (startReview()) {
+          onStartReview={async () => {
+            if (openSimulation ? await startSimulation() : startReview()) {
               closeModals();
               router.push("/questions" as any);
             }
@@ -107,16 +109,6 @@ function AppContent() {
       <ConnectionStatus />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="stats"
-          options={{
-            presentation: "card",
-            headerShown: true,
-            headerTitle: "Meu Desempenho",
-            headerTintColor: colors.primary,
-            headerStyle: { backgroundColor: colors.surface },
-          }}
-        />
       </Stack>
       <GlobalModalsAndToast />
     </>

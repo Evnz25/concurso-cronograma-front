@@ -62,7 +62,7 @@ export function WeekCalendar({
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`${day.label}, ${day.day}${day.hasStudy ? ", com estudo agendado" : ""}`}
+              accessibilityLabel={`${day.label}, ${day.day}${day.hasSimulation ? ", com simulado" : day.hasStudy ? ", com estudo agendado" : ""}`}
               accessibilityState={{ selected }}
             >
               <AppText
@@ -83,16 +83,24 @@ export function WeekCalendar({
               >
                 {day.day}
               </AppText>
-              {day.hasStudy && <View style={[styles.dot, selected && styles.dotSelected]} />}
+              {day.hasSimulation ? <Icon name="book" size={13} color={selected ? colors.white : colors.primary} />
+                : day.hasStudy && <View style={[styles.dot, selected && styles.dotSelected]} />}
             </Pressable>
           );
         })}
       </View>
+      {days.some(day => day.hasSimulation) && (
+        <View style={styles.legend}>
+          <Icon name="book" size={13} color={colors.primary} />
+          <AppText variant="caption">Simulado de revisão</AppText>
+        </View>
+      )}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
+  legend: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.sm },
   header: {
     flexDirection: "row",
     alignItems: "center",

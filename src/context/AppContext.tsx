@@ -16,7 +16,7 @@ import type {
   Question,
   QuestionSession,
 } from "@/interfaces";
-import type { AnswerInput, ReviewEntry, ApiTrack, ApiUser, SyncResponse } from "@/interfaces/Api";
+import type { AnswerInput, ReviewEntry, ApiTrack, ApiUser, SyncResponse, SimulationSummary } from "@/interfaces/Api";
 import { useLocalDay } from "@/hooks/useLocalDay";
 import { createApiClient, ApiError } from "@/services/apiService";
 import { API_URL } from "@/services/apiConfig";
@@ -29,7 +29,7 @@ import {
   newId,
 } from "@/services/apiAdapters";
 import { INITIAL_SESSION } from "@/services/questionService";
-import { getCompletedMinutes, getPlannedMinutes } from "@/services/scheduleService";
+import { getCompletedMinutes, getPlannedMinutes, mergePracticeChanges } from "@/services/scheduleService";
 import { mapReviewDays } from "@/services/reviewService";
 import { formatShortDate } from "@/services/formatService";
 import { EMPTY_USER } from "@/services/userService";
@@ -47,6 +47,7 @@ interface Data {
   exams: Exam[];
   sync: SyncResponse | null;
   agenda: ReviewEntry[];
+  openSimulation: boolean;
 }
 
 const DEFAULT_RAW_TRACKS: ApiTrack[] = [
@@ -106,6 +107,7 @@ const EMPTY_DATA: Data = {
   exams: [],
   sync: null,
   agenda: [],
+  openSimulation: false,
 };
 
 function useAppState() {
@@ -124,6 +126,9 @@ function useAppState() {
   const [submitted, setSubmitted] = useState(false);
   const [preview, setPreview] = useState<Record<Difficulty, string> | null>(null);
   const [reviewQueue, setReviewQueue] = useState<Question[] | null>(null);
+  const [simulation, setSimulation] = useState<{ id: string; total: number; queue: Question[] } | null>(null);
+  const [simulationResult, setSimulationResult] = useState<{ title: string; trackId: string; summary: SimulationSummary | null } | null>(null);
+  const practiceChanges = useRef<SimulationSummary | null>(null);
   const pendingCycle = useRef<{ trackId: string; id: string } | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType | null>(null);
@@ -153,7 +158,7 @@ function useAppState() {
     [trackQuestions, data.agenda, today],
   );
   const dueToday = reviews.get(today) ?? [];
-  const questions = reviewQueue ?? trackQuestions;
+  const questions = simulation?.queue ?? reviewQueue ?? trackQuestions;
   const question = questions[session.index];
   useEffect(() => {
     if (!attempt || !credentials) return;
@@ -191,6 +196,8 @@ function useAppState() {
       };
 
   function resetQuestions(queue: Question[] | null = null) {
+    practiceChanges.current = null;
+    setSimulation(null);
     setSession(INITIAL_SESSION);
     setReviewQueue(queue);
     setAttempt(null);
@@ -207,9 +214,10 @@ function useAppState() {
     return true;
   }
   function clearSession() {
+    setSimulationResult(null);
     credentialRef.current = null;
     setCredentials(null);
-    setData((old) => ({ ...old, sync: null, agenda: [] }));
+    setData((old) => ({ ...old, sync: null, agenda: [], openSimulation: false }));
     setIsGuest(false);
     resetQuestions();
     pendingCycle.current = null;
@@ -262,22 +270,23 @@ function useAppState() {
   }
 
   async function load(current: Credentials) {
-    const [rawTracks, rawExams, sync, agenda] = await Promise.all([
+    const [rawTracks, rawExams, sync] = await Promise.all([
       api.tracks(),
       api.exams(),
       api.downloadCurrentWeek(current.token),
-      api.reviews(current.token),
     ]);
     if (sync.usuario.id !== current.userId)
       throw new ApiError("A sessão não corresponde ao usuário.", 401);
-    const groups = await Promise.all(rawTracks.map((track) => api.questions(track._id)));
+    const [groups, calendar] = await Promise.all([
+      Promise.all(rawTracks.map((track) => api.questions(track._id))), api.studyAgenda(current.token),
+    ]);
     const unique = new Map(groups.flat().map((question) => [question._id, question]));
     setData({
       tracks: rawTracks,
       exams: rawExams.map((exam) => mapExam(exam, rawTracks)),
       questions: [...unique.values()].map((question) => mapQuestion(question, rawTracks)),
       sync,
-      agenda,
+      ...calendar,
     });
     setTrackId(
       sync.cronogramas.find((schedule) => schedule.ativo === 1)?.trilha_id ||
@@ -347,10 +356,10 @@ function useAppState() {
     checkedWeek.current = key;
     void run(async () => {
       const sync = await api.downloadCurrentWeek(credentials.token);
-      const agenda = await api.reviews(credentials.token);
-      setData((old) => ({ ...old, sync, agenda }));
+      const calendar = await api.studyAgenda(credentials.token);
+      setData((old) => ({ ...old, sync, ...calendar }));
       const track = sync.cronogramas.find((c) => c.ativo)?.trilha_id;
-      if (track && track !== trackId) {
+      if (track && (track !== trackId || sync.cronogramas.find(c => c.ativo)?.id !== activeSchedule.id)) {
         setTrackId(track);
         resetQuestions();
       }
@@ -405,11 +414,49 @@ function useAppState() {
           })),
         },
       }));
+      const calendar = await api.studyAgenda(current.token);
+      setData(old => ({ ...old, ...calendar }));
     });
 
   function selectOption(index: number) {
     if (busy || session.revealed) return;
     setSession((previous) => ({ ...previous, selectedOption: index }));
+  }
+  const startSimulation = () => run(async () => {
+    if (!activeSchedule) throw new Error("Escolha uma trilha para iniciar o simulado.");
+    if (simulation) return;
+    if (attempt) throw new Error("Conclua a questão em andamento antes de iniciar o simulado.");
+    const exam = await api.startSimulation(requireCredentials().token, activeSchedule.id);
+    const catalog = new Map(data.questions.map(q => [q.id, q]));
+    if (exam.pendentes.some(id => !catalog.has(id))) {
+      const updated = await api.questions(activeSchedule.trilha_id);
+      for (const row of updated) catalog.set(row._id, mapQuestion(row, data.tracks));
+      setData(previous => ({ ...previous, questions: [...catalog.values()] }));
+    }
+    const queue = exam.pendentes.map(id => {
+      const item = catalog.get(id);
+      if (!item) throw new Error("Uma questão deste simulado não está disponível no catálogo.");
+      return item;
+    });
+    resetQuestions();
+    setSimulation({ id: exam.id, total: exam.total, queue });
+  });
+  async function finishSimulation() {
+    if (!simulation) return;
+    const current = requireCredentials();
+    const { cronograma: cycle, resumo } = await api.finishSimulation(current.token, simulation.id);
+    if (cycle.ativo) {
+      const calendar = await api.studyAgenda(current.token);
+      setData(old => ({
+        ...old,
+        ...calendar,
+        sync: old.sync && { ...old.sync, cronogramas: old.sync.cronogramas.map(c => c.id === cycle.id ? cycle : c) },
+      }));
+    } else {
+      await load(current);
+    }
+    resetQuestions();
+    setSimulationResult({ title: "Simulado concluído", trackId: cycle.trilha_id, summary: resumo ?? null });
   }
   function confirmAnswer() {
     if (busy || session.revealed || session.selectedOption === null || !questions[session.index])
@@ -418,6 +465,8 @@ function useAppState() {
     setPreview(null);
     setAttempt({
       id: newId(),
+      ...(simulation && { simulado_id: simulation.id }),
+      ...(simulation && session.index === questions.length - 1 && { concluir_simulado: true }),
       questao_id: questions[session.index].id,
       alternativa: String.fromCharCode(65 + session.selectedOption),
       respondida_em: now.toISOString(),
@@ -444,24 +493,47 @@ function useAppState() {
         return;
       setSubmitted(true);
       const difficulty = session.rating === "hard" ? 1 : session.rating === "medium" ? 3 : 5;
-      const row = await api.saveAnswer(current.token, attempt, difficulty);
-      const agenda = await api.reviews(current.token);
+      const { tentativa: row, plano } = await api.saveAnswer(current.token, attempt, difficulty);
+      const calendar = await api.studyAgenda(current.token);
       const id = row.id;
+      // A API antiga confirma a resposta sem incluir o plano.
+      const plan = plano === undefined && !simulation && activeSchedule ? await api.updateAfterPractice(current.token) : plano;
+      const cycle = plan?.cronograma;
+      if (cycle && (!cycle.ativo || cycle.id !== activeSchedule?.id)) {
+        await load(current);
+        setToastMessage("Resposta salva. O novo ciclo já está disponível.");
+        return;
+      }
       setData((old) => ({
         ...old,
-        agenda,
+        ...calendar,
         sync: old.sync && {
           ...old.sync,
+          cronogramas: cycle ? old.sync.cronogramas.map(c => c.id === cycle.id ? cycle : c) : old.sync.cronogramas,
           tentativas: [...old.sync.tentativas.filter((item) => item.id !== id), row],
         },
       }));
+      if (simulation && session.index === questions.length - 1) {
+        await finishSimulation();
+        finished = true;
+        return;
+      }
       finished = session.index === questions.length - 1;
+      if (cycle && plan?.resumo) {
+        practiceChanges.current = mergePracticeChanges(practiceChanges.current, plan.resumo, today);
+        if (finished) {
+          setSimulationResult({ title: reviewQueue ? "Revisão concluída" : "Prática concluída",
+            trackId: cycle.trilha_id, summary: practiceChanges.current });
+          practiceChanges.current = null;
+        }
+      }
       setSession({ ...INITIAL_SESSION, index: finished ? 0 : session.index + 1 });
       setAttempt(null);
       setSubmitted(false);
       setPreview(null);
       if (finished) setReviewQueue(null);
-      const nextDate = agenda.find((item) => item.questao_id === row.questao_id)?.vencimento;
+      if (finished && cycle && plan?.resumo) return;
+      const nextDate = row.proxima_revisao;
       setToastMessage(
         nextDate
           ? `Resposta salva. Próxima revisão em ${formatShortDate(nextDate)}.`
@@ -490,10 +562,10 @@ function useAppState() {
     if (!cycle.ativo || !data.sync) {
       await load(current);
     } else {
-      const agenda = await api.reviews(current.token);
+      const calendar = await api.studyAgenda(current.token);
       setData((old) => ({
         ...old,
-        agenda,
+        ...calendar,
         sync: old.sync && {
           ...old.sync,
           cronogramas: [
@@ -611,8 +683,14 @@ function useAppState() {
     plannedMinutes: getPlannedMinutes(blocks),
     today,
     reviews,
+    openSimulation: data.openSimulation || !!simulation,
     startReview,
     isReviewSession: !!reviewQueue,
+    simulation,
+    simulationResult,
+    dismissSimulationResult: () => setSimulationResult(null),
+    startSimulation,
+    finishPendingSimulation: () => run(finishSimulation),
     nextReviewDate: session.rating ? preview?.[session.rating] : null,
     ratingLocked: submitted || busy,
     pendingReviews: dueToday.length,

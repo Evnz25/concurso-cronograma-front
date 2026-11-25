@@ -3,7 +3,7 @@ import type {
   Question,
   StudyBlock,
   SubjectHours,
-  ThemePerformance,
+  SubjectPerformanceRow,
   Track,
 } from "@/interfaces";
 
@@ -188,7 +188,7 @@ export const SUBJECT_HOURS: SubjectHours[] = [
   { title: "Governança", hours: 1, color: "orange" },
 ];
 
-export const THEME_PERFORMANCE: ThemePerformance[] = [
+export const THEME_PERFORMANCE: Omit<SubjectPerformanceRow, "percent">[] = [
   {
     title: "Engenharia de Software",
     icon: "code",

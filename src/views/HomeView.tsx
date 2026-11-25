@@ -18,7 +18,6 @@ import { formatDayMonth, formatLongDate } from "@/services/formatService";
 import { routeFor } from "@/services/navigationService";
 import { getGoalPercent } from "@/services/scheduleService";
 import {
-  getFocusStreak,
   filterAnswers,
   getAccuracy,
   getQuestionsSolved,
@@ -60,7 +59,6 @@ export function HomeView() {
     <ScreenContainer>
       <AppHeader
         userName={user.name}
-        streakDays={getFocusStreak(answers, allBlocks)}
         onOpenNotifications={() => openModal("notifications")}
         onOpenProfile={() => navigate("profile")}
       />

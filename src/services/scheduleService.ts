@@ -1,4 +1,5 @@
 import type { DayPlan, StudyBlock, StudyBreak, WeekDay } from "@/interfaces";
+import type { SimulationSummary } from "@/interfaces/Api";
 
 import {
   localDate,
@@ -8,6 +9,22 @@ import {
   minutesToTime,
   timeToMinutes,
 } from "./formatService";
+
+export function mergePracticeChanges(first: SimulationSummary | null, next: SimulationSummary, today: string): SimulationSummary {
+  const initialWeights = new Map(first?.pesos.map(p => [p.materia_id, p.anterior]));
+  const blocks = new Map<string, SimulationSummary["blocos"][number]>();
+  for (const block of [...(first?.blocos ?? []), ...next.blocos]) {
+    if (block.data < today) continue;
+    const key = `${block.data}/${block.posicao}`;
+    const original = blocks.get(key)?.anterior ?? block.anterior;
+    if (original === block.atual) blocks.delete(key);
+    else blocks.set(key, { ...block, anterior: original });
+  }
+  return {
+    pesos: next.pesos.map(p => ({ ...p, anterior: initialWeights.get(p.materia_id) ?? p.anterior })),
+    blocos: [...blocks.values()].sort((a, b) => a.data.localeCompare(b.data) || a.posicao - b.posicao),
+  };
+}
 
 /** RNF02: limite de estudo consecutivo por matéria. */
 export const MAX_CONSECUTIVE_MINUTES_PER_SUBJECT = 120;
@@ -101,6 +118,7 @@ export function getWeekDays(
       isPast: key < today,
       isToday: key === today,
       hasStudy: reviewDates.has(key) || blocks.some((block) => block.date === key),
+      hasSimulation: reviewDates.has(key),
     };
   });
 }

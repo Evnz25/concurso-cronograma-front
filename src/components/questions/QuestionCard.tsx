@@ -39,7 +39,7 @@ export function QuestionCard({
   onRate,
   onNext,
 }: QuestionCardProps) {
-  const { busy, ratingLocked, nextReviewDate } = useApp();
+  const { busy, ratingLocked, nextReviewDate, simulation } = useApp();
   const correct = isCorrectAnswer(question, selectedOption);
   const progressPercent = (position / total) * 100;
 
@@ -47,7 +47,7 @@ export function QuestionCard({
     <Card style={styles.card}>
       {/* Top Header */}
       <View style={styles.topRow}>
-        <Badge tone="purple">{question.theme}</Badge>
+        <Badge tone="purple">{question.topic}</Badge>
         <AppText variant="caption">
           Questão {position} de {total}
         </AppText>
@@ -59,7 +59,7 @@ export function QuestionCard({
       <View style={styles.sourceRow}>
         <Icon name="book" size={14} color={colors.muted} />
         <AppText variant="caption" style={styles.sourceText} numberOfLines={1}>
-          {question.source} · {question.topic}
+          {question.source}
         </AppText>
       </View>
 
@@ -165,7 +165,7 @@ export function QuestionCard({
           )}
 
           <Button
-            label={isLast ? "Salvar e concluir sessão" : "Salvar e próxima questão"}
+            label={isLast ? (simulation ? "Concluir simulado" : "Salvar e concluir sessão") : "Salvar e próxima questão"}
             icon="arrow"
             disabled={!rating}
             loading={busy}
