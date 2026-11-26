@@ -90,7 +90,7 @@ O `GET /sync` atual pagina apenas por data. Se mais de 500 tentativas compartilh
 
 ## Verificação
 
-```powershelll
+```powershell
 npm run typecheck
 npm test
 npx expo export --platform web
