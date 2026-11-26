@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import type { ExamFilter, PageId } from "@/interfaces";
 import { AppText } from "@/components/common/AppText";
 import { Icon } from "@/components/common/Icon";
-import { ToneIcon } from "@/components/common/ToneIcon";
 import { PageHeading } from "@/components/common/PageHeading";
 import { ScreenContainer } from "@/components/common/ScreenContainer";
 import { DailyGoalCard } from "@/components/home/DailyGoalCard";
@@ -24,7 +23,7 @@ import {
   getStudyHours,
 } from "@/services/statsService";
 import { getTrackById } from "@/services/trackService";
-import { colors, radius, spacing } from "@/theme";
+import { colors, radius } from "@/theme";
 
 export function HomeView() {
   const router = useRouter();
@@ -41,7 +40,6 @@ export function HomeView() {
     answers,
     openExam,
     openModal,
-    selectTrack,
   } = useApp();
 
   const [examFilter, setExamFilter] = useState<ExamFilter>("all");
@@ -100,63 +98,6 @@ export function HomeView() {
         onExplore={() => navigate("stats")}
       />
 
-      <View style={styles.tracksSection}>
-        <View style={styles.tracksHeader}>
-          <AppText variant="subheading">Trilhas disponíveis ({tracks.length})</AppText>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => navigate("profile")}
-            style={({ pressed }) => [pressed && styles.pressed]}
-          >
-            <AppText variant="caption" color={colors.accent}>
-              Gerenciar no perfil
-            </AppText>
-          </Pressable>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tracksList}
-        >
-          {tracks.map((t) => {
-            const isSelected = t.id === user.trackId;
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => selectTrack(t.id)}
-                style={({ pressed }) => [
-                  styles.trackPill,
-                  isSelected && styles.trackPillSelected,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`Selecionar trilha ${t.name}`}
-              >
-                <ToneIcon name={t.icon} tone="purple" size={32} iconSize={16} />
-                <View style={styles.trackPillText}>
-                  <AppText
-                    variant="caption"
-                    style={[styles.trackPillName, isSelected && styles.trackPillNameSelected]}
-                    numberOfLines={1}
-                  >
-                    {t.shortName || t.name}
-                  </AppText>
-                  {isSelected ? (
-                    <AppText variant="caption" style={styles.trackPillActiveTag}>
-                      Ativa
-                    </AppText>
-                  ) : (
-                    <AppText variant="caption" style={styles.trackPillHint} numberOfLines={1}>
-                      {t.name}
-                    </AppText>
-                  )}
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-
       <OpportunitiesSection
         exams={filteredExams}
         filter={examFilter}
@@ -179,57 +120,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-  },
-  tracksSection: {
-    gap: spacing.xs,
-  },
-  tracksHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  tracksList: {
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  trackPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 140,
-  },
-  trackPillSelected: {
-    borderColor: colors.primary,
-    backgroundColor: "#faf6ff",
-  },
-  trackPillText: {
-    flexShrink: 1,
-    gap: 1,
-  },
-  trackPillName: {
-    fontWeight: "600",
-    color: colors.text,
-  },
-  trackPillNameSelected: {
-    color: colors.primary,
-  },
-  trackPillActiveTag: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 10,
-  },
-  trackPillHint: {
-    color: colors.muted,
-    fontSize: 10,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

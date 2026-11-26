@@ -6,7 +6,6 @@ import { AppText } from "../common/AppText";
 import { Badge } from "../common/Badge";
 import { Card } from "../common/Card";
 import { ProgressBar } from "../common/ProgressBar";
-import { SmartPill } from "../common/SmartPill";
 import { ToneIcon } from "../common/ToneIcon";
 
 interface SubjectPerformanceTableProps {
@@ -21,7 +20,6 @@ export function SubjectPerformanceTable({ rows }: SubjectPerformanceTableProps) 
           <AppText variant="heading">Desempenho por matéria</AppText>
           <AppText variant="caption">Priorização do SRS</AppText>
         </View>
-        <SmartPill iconSize={13}>Inteligente</SmartPill>
       </View>
 
       <View style={styles.list}>

@@ -7,7 +7,6 @@ import { Card } from "@/components/common/Card";
 import { Button } from "@/components/common/Button";
 import { PageHeading } from "@/components/common/PageHeading";
 import { ScreenContainer } from "@/components/common/ScreenContainer";
-import { SmartPill } from "@/components/common/SmartPill";
 import { DayOverview } from "@/components/schedule/DayOverview";
 import { StudyBlockList } from "@/components/schedule/StudyBlockList";
 import { WeekCalendar } from "@/components/schedule/WeekCalendar";
@@ -73,7 +72,6 @@ export function StudyView() {
       <PageHeading
         eyebrow="SEU PLANO, NO SEU RITMO"
         title="Cronograma"
-        aside={<SmartPill>Ciclo de estudos</SmartPill>}
       />
 
       <WeekCalendar

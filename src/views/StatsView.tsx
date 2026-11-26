@@ -8,7 +8,6 @@ import { AccuracyChart } from "@/components/stats/AccuracyChart";
 import { HoursBarChart } from "@/components/stats/HoursBarChart";
 import { StatBox } from "@/components/stats/StatBox";
 import { SubjectWeightsCard } from "@/components/stats/SubjectWeightsCard";
-import { SubjectPerformanceTable } from "@/components/stats/SubjectPerformanceTable";
 import { useApp } from "@/context/AppContext";
 import { formatNumber } from "@/services/formatService";
 import {
@@ -22,7 +21,6 @@ import {
   getStudyHours,
   getSubjectHours,
   getSubjectWeights,
-  getSubjectPerformance,
 } from "@/services/statsService";
 import { spacing } from "@/theme";
 
@@ -88,7 +86,7 @@ export function StatsView() {
 
       <AccuracyChart accuracy={accuracy} ratio={getAccuracyRatio(periodAnswers)} />
 
-      <SubjectPerformanceTable rows={getSubjectPerformance(periodAnswers)} />
+      {/* Desempenho por matéria temporariamente oculto. */}
     </ScreenContainer>
   );
 }
